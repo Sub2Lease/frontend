@@ -24,7 +24,7 @@ const Landing = () => {
           <div className="flex items-center justify-center gap-4 pt-6">
             <Button
               size="lg"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/auth")}
               className="text-lg px-8 py-6 bg-primary hover:bg-primary/90 shadow-[0_0_20px_hsl(var(--primary)/0.3)] hover:shadow-[0_0_30px_hsl(var(--primary)/0.5)] transition-all"
             >
               Log In / Sign Up
@@ -38,21 +38,6 @@ const Landing = () => {
             >
               Find Properties
             </Button>
-          </div>
-          
-          <div className="pt-12 grid grid-cols-3 gap-8 max-w-3xl mx-auto">
-            <div className="space-y-2">
-              <div className="text-4xl font-bold text-primary">500+</div>
-              <div className="text-sm text-muted-foreground">Active Listings</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-4xl font-bold text-primary">2,000+</div>
-              <div className="text-sm text-muted-foreground">Students</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-4xl font-bold text-primary">95%</div>
-              <div className="text-sm text-muted-foreground">Match Rate</div>
-            </div>
           </div>
         </div>
       </div>

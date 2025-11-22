@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PropertyCard from "@/components/PropertyCard";
 import PropertyFilters from "@/components/PropertyFilters";
-import MapBackground from "@/components/MapBackground";
+import InteractiveMap from "@/components/InteractiveMap";
 
 // Mock data
 const mockProperties = [
@@ -130,13 +130,7 @@ const Properties = () => {
           {/* Right - Map */}
           <div className="lg:col-span-1">
             <div className="sticky top-24 h-[600px] rounded-lg overflow-hidden border border-border">
-              <MapBackground />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center space-y-2 bg-background/80 backdrop-blur-sm p-6 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Interactive Map</p>
-                  <p className="text-xs text-muted-foreground">Click pins to view properties</p>
-                </div>
-              </div>
+              <InteractiveMap />
             </div>
           </div>
         </div>
