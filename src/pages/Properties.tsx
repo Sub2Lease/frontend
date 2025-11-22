@@ -107,7 +107,6 @@ const Properties = () => {
             onMaxRoommatesChange={setMaxRoommates}
             maxDistance={maxDistance}
             onMaxDistanceChange={setMaxDistance}
-            layout="horizontal" // optional prop if you want a different UI
           />
         </div>
       </div>
