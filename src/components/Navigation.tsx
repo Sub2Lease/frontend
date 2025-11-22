@@ -5,6 +5,8 @@ import { Button } from "./ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
+// Login and logout options for mobile and desktop 
+
 const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();

@@ -3,7 +3,8 @@ import PropertyCard from "@/components/PropertyCard";
 import PropertyFilters from "@/components/PropertyFilters";
 import InteractiveMap from "@/components/InteractiveMap";
 
-// Mock data
+//properties page to view and filter properties (change with actual data later)
+
 const mockProperties = [
   {
     id: 1,
@@ -92,51 +93,56 @@ const Properties = () => {
   );
 
   return (
-    <div className="min-h-screen pt-20 pb-12">
-      <div className="container mx-auto px-6">
-        <h1 className="text-4xl font-bold mb-8">
-          Available <span className="text-primary">Properties</span>
-        </h1>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left sidebar - Filters */}
-          <div className="lg:col-span-1">
-            <PropertyFilters
-              priceRange={priceRange}
-              onPriceChange={setPriceRange}
-              maxRoommates={maxRoommates}
-              onMaxRoommatesChange={setMaxRoommates}
-              maxDistance={maxDistance}
-              onMaxDistanceChange={setMaxDistance}
-            />
-          </div>
+  <div className="min-h-screen pt-20 pb-12">
+    <div className="container mx-auto px-6">
 
-          {/* Center - Property List */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="text-sm text-muted-foreground mb-4">
-              {filteredProperties.length} properties found
-            </div>
-            
-            {filteredProperties.map((property) => (
-              <PropertyCard
-                key={property.id}
-                {...property}
-                isSaved={savedProperties.has(property.id)}
-                onSave={handleSaveProperty}
-              />
-            ))}
-          </div>
-
-          {/* Right - Map */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-24 h-[600px] rounded-lg overflow-hidden border border-border">
-              <InteractiveMap />
-            </div>
-          </div>
+      {/* ---------- Top Filter Bar ---------- */}
+      <div className="w-full mb-6 sticky top-20 z-20 bg-background pt-4 pb-2 border-b border-border">
+        <div className="flex flex-wrap gap-4 items-center">
+          {/* Replace these with your actual filter components */}
+          <PropertyFilters
+            priceRange={priceRange}
+            onPriceChange={setPriceRange}
+            maxRoommates={maxRoommates}
+            onMaxRoommatesChange={setMaxRoommates}
+            maxDistance={maxDistance}
+            onMaxDistanceChange={setMaxDistance}
+            layout="horizontal" // optional prop if you want a different UI
+          />
         </div>
       </div>
+
+      {/* ---------- Main Content Row ---------- */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+        {/* ---------- Property List (Left) ---------- */}
+        <div className="xl:col-span-2 space-y-4">
+          <div className="text-sm text-muted-foreground mb-2">
+            {filteredProperties.length} properties found
+          </div>
+
+          {filteredProperties.map((property) => (
+            <PropertyCard
+              key={property.id}
+              {...property}
+              isSaved={savedProperties.has(property.id)}
+              onSave={handleSaveProperty}
+            />
+          ))}
+        </div>
+
+        {/* ---------- Map (Right) ---------- */}
+        <div className="hidden xl:block sticky top-32 h-[calc(100vh-10rem)]">
+          <div className="w-full h-full rounded-lg overflow-hidden border border-border">
+            <InteractiveMap />
+          </div>
+        </div>
+
+      </div>
     </div>
-  );
+  </div>
+);
+
 };
 
 export default Properties;

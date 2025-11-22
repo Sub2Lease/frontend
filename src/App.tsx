@@ -11,6 +11,8 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
 
+// runner class 
+
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   

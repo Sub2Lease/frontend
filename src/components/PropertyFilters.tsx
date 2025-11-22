@@ -3,6 +3,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+// set filters for properties and update result
+
 interface PropertyFiltersProps {
   priceRange: [number, number];
   onPriceChange: (value: [number, number]) => void;

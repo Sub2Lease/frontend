@@ -2,6 +2,9 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import MapBackground from "@/components/MapBackground";
 
+
+//main page with map and two buttons for login and properties
+
 const Landing = () => {
   const navigate = useNavigate();
 
