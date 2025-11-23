@@ -55,22 +55,6 @@ const PropertyFilters = ({
           className="w-[100px]"
         />
       </div>
-
-      {/* DISTANCE */}
-      <div className="flex flex-col gap-1">
-        <Label>Max Distance to Campus</Label>
-        <div className="text-sm text-muted-foreground">
-          {maxDistance} miles
-        </div>
-        <Slider
-          min={0}
-          max={10}
-          step={0.5}
-          value={[maxDistance]}
-          onValueChange={(v) => onMaxDistanceChange(v[0])}
-          className="w-full max-w-[220px]"
-        />
-      </div>
     </div>
   );
 };

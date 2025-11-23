@@ -191,7 +191,7 @@ const Properties = () => {
   );
 
   return (
-    <div className="min-h-screen pt-20 pb-12">
+    <div className="min-h-screen pt-28 pb-12">
       <div className="container mx-auto px-6">
         {/* Top heading */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-8 gap-4">
@@ -213,7 +213,7 @@ const Properties = () => {
         </div>
 
         {/* Top filter bar */}
-        <div className="w-full mb-6 sticky top-20 z-20 bg-background pt-4 pb-2 border-b border-border">
+        <div className="w-full mb-6 sticky top-16 z-20 bg-background pt-4 pb-2 border-b border-border">
           <div className="flex flex-wrap gap-4 items-center">
             <PropertyFilters
               priceRange={priceRange}
