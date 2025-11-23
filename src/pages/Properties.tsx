@@ -57,6 +57,11 @@ function getCurrentUser() {
   }
 }
 
+const format = (date: Date) => date.toLocaleDateString('en-US', {
+  month: 'short',
+  day: 'numeric',
+});
+
 const Properties = () => {
   const navigate = useNavigate();
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 2000]);
@@ -110,8 +115,8 @@ const Properties = () => {
           price: l.rent ?? 0,
           title: l.title || l.address || "Sublease",
           address: l.address || "Madison, WI",
-          availableFrom: l.startDate,
-          availableTo: l.endDate,
+          availableFrom: format(new Date(l.startDate)),
+          availableTo: format(new Date(l.endDate)),
           roommates: l.capacity ?? 0,
           distance: 0,
           amenities: [],

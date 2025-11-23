@@ -12,6 +12,7 @@ import PostLeaseDialog from "@/components/dashboard/PostLeaseDialog";
 import { MessagesModal } from "@/components/MessagesModal";
 import { useLeasePayments } from "@/hooks/useLeasePayments";
 import { useLeaseActions } from "@/hooks/useLeaseActions";
+import { Button } from "@/components/ui/button";
 
 import { API_BASE, IMAGE_URL, LOCAL_STORAGE_USER_KEY } from "@/constants";
 
@@ -46,6 +47,7 @@ interface ApiAgreement {
 }
 
 const Dashboard = () => {
+  const [activeTab, setActiveTab] = useState<"owner" | "tenant">("owner");
   const [triggerUserLoad, setTriggerUserLoad] = useState(false);
 
   const [userProfile, setUserProfile] = useState<{
@@ -182,26 +184,51 @@ const Dashboard = () => {
         </div>
 
         {/* 2x2 grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ProfileCard
-            user={userProfile}
-            loading={loadingProfile}
-            onRefresh={() => setTriggerUserLoad((x) => !x)}
-            onInbox={() => setInboxOpen(true)}
-          />
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-center items-end">
+            <div className="bg-muted rounded-md w-fit p-2 gap-4 flex">
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={activeTab === "owner"}
+                className={activeTab === "owner" ? "bg-primary !opacity-100" : ""}
+                onClick={() => setActiveTab("owner")}
+              >
+                As a Sublessor
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={activeTab === "tenant"}
+                className={activeTab === "tenant" ? "bg-primary !opacity-100" : ""}
+                onClick={() => setActiveTab("tenant")}
+              >
+                As a Tenant
+              </Button>
+            </div>
+            {/* <ProfileCard
+              user={userProfile}
+              loading={loadingProfile}
+              onRefresh={() => setTriggerUserLoad((x) => !x)}
+              onInbox={() => setInboxOpen(true)}
+            /> */}
+          </div>
 
-          {/* 🔥 Blockchain Payments */}
-          <PaymentsCard
-            leases={leases}
-            payments={payments}
-            isLoading={paymentsLoading || isPending}
-            onPayDeposit={payDeposit}
-            onPayRent={payRent}
-          />
-
-          <PostedLeasesCard leases={postedLeases} />
-
-          <AgreementsCard agreements={agreements} userId={userProfile?.id} />
+          {activeTab === "tenant" && (
+            <>
+              <PaymentsCard
+                leases={leases}
+                payments={payments}
+                isLoading={paymentsLoading || isPending}
+                onPayDeposit={payDeposit}
+                onPayRent={payRent}
+              />
+              <AgreementsCard agreements={agreements} userId={userProfile?.id} />
+            </>
+          )}
+          {activeTab === "owner" && (
+            <PostedLeasesCard leases={postedLeases} />
+          )}
         </div>
       </div>
 

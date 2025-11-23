@@ -4,7 +4,6 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import ImageUpload from "@/components/ImageUpload";
 import WalletConnectButton from "./WalletConnectButton";
-import { RefreshCcw } from "lucide-react";
 
 interface Props {
   user: {
@@ -21,14 +20,14 @@ interface Props {
 const ProfileCard = ({ user, loading, onRefresh, onInbox }: Props) => {
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-20 animate-pulse rounded-md bg-muted" />
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-20 animate-pulse rounded-md bg-muted" />
+          </CardContent>
+        </Card>
     );
   }
 
@@ -59,7 +58,7 @@ const ProfileCard = ({ user, loading, onRefresh, onInbox }: Props) => {
       <CardHeader>
         <div className="flex items-center gap-2">
           <CardTitle>Profile</CardTitle>
-          <RefreshCcw className="cursor-pointer" onClick={onRefresh} />
+          {/* <RefreshCcw className="cursor-pointer" onClick={onRefresh} /> */}
         </div>
       </CardHeader>
 
