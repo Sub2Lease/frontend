@@ -1,17 +1,63 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import MapBackground from "@/components/MapBackground";
+import InteractiveMap from "@/components/InteractiveMap";
 
 // main page with map and two buttons for login and properties
 
 const Landing = () => {
   const navigate = useNavigate();
 
+  // background map offset (in px)
+  const [mapOffset, setMapOffset] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    // how far the map is allowed to move
+    const MAX_X = 50*2; // px left/right
+    const MAX_Y = 50*2; // px up/down
+
+    let x = 0;
+    let y = 0;
+    let dx = 0.30*2; // speed in px per frame
+    let dy = 0.10*2;
+
+    const id = window.setInterval(() => {
+      x += dx;
+      y += dy;
+
+      // bounce in a rectangle
+      if (x > MAX_X || x < -MAX_X) {
+        dx = -dx;
+        x += dx;
+      }
+      if (y > MAX_Y || y < -MAX_Y) {
+        dy = -dy;
+        y += dy;
+      }
+
+      setMapOffset({ x, y });
+    }, 16); // ~60fps
+
+    return () => window.clearInterval(id);
+  }, []);
+
   return (
     <div className="relative min-h-screen overflow-hidden">
-      <MapBackground interactive />
+      {/* Full-screen animated map background */}
+      <div
+        className="absolute inset-0 -z-20 pointer-events-none"
+        style={{
+          transform: `translate(${mapOffset.x}px, ${mapOffset.y}px) scale(1.12)`,
+          transition: "transform 0.16s linear",
+        }}
+      >
+        <InteractiveMap />
+      </div>
 
-      {/* increased top padding -> content sits lower */}
+      {/* Dark gradient overlay so copy stays readable */}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
+
+      {/* Hero content */}
       <div className="relative z-10 container mx-auto px-6 pt-36 md:pt-40 lg:pt-48 pb-20">
         <div
           className="
@@ -28,7 +74,7 @@ const Landing = () => {
           </h1>
 
           <p className="text-base md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Find your perfect sublease or post your apartment with ease. 
+            Find your perfect sublease or post your apartment with ease.
             The smart way for UW Madison students to sublease.
           </p>
 
@@ -49,7 +95,7 @@ const Landing = () => {
               Log In / Sign Up
             </Button>
 
-            <Button
+          <Button
               size="lg"
               variant="outline"
               onClick={() => navigate("/properties")}

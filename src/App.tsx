@@ -9,8 +9,7 @@ import Properties from "./pages/Properties";
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-// ❌ remove this import – we won't use Supabase-based auth anymore
-// import { useAuth } from "./hooks/useAuth";
+import "leaflet/dist/leaflet.css";
 
 // helper to read the user from localStorage
 function getCurrentUser() {

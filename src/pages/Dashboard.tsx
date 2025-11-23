@@ -1,3 +1,4 @@
+// pages/Dashboard.tsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { MessagesModal } from "@/components/MessagesModal";
 
 const API_BASE = "https://sub2leasebackend.onrender.com";
 
@@ -31,13 +33,10 @@ interface ApiListing {
   rent?: number;
   address?: string;
   title?: string;
-  buildingName?: string;
   capacity?: number;
-  peopleCount?: number;
   images?: string[];
   description?: string;
   owner?: string;
-  views?: number;
 }
 
 interface ApiAgreement {
@@ -97,9 +96,13 @@ const Dashboard = () => {
     description: "",
   });
 
+  // messaging modal state
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [inboxPeerId, setInboxPeerId] = useState<string | undefined>(undefined);
+
   const navigate = useNavigate();
 
-  // ---------- Load "current user" from localStorage or /users ----------
+  // ---------- Load "current user" ----------
   useEffect(() => {
     const loadUser = async () => {
       setLoadingProfile(true);
@@ -119,6 +122,7 @@ const Dashboard = () => {
           }
         }
 
+        // Fallback: use first user from /users so dev still works
         const res = await fetch(`${API_BASE}/users`);
         if (!res.ok) {
           console.error("Failed to load users:", res.status);
@@ -170,7 +174,6 @@ const Dashboard = () => {
               const id = (listing._id || "").toString();
               const title =
                 listing.title ||
-                listing.buildingName ||
                 listing.address ||
                 "My listing";
               const price = listing.rent ?? 0;
@@ -180,7 +183,7 @@ const Dashboard = () => {
                 title,
                 price,
                 status: "Active",
-                views: listing.views ?? 0,
+                views: (listing as any).views ?? 0,
               };
             })
           );
@@ -269,12 +272,12 @@ const Dashboard = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           owner: userProfile.id,
-          title: newLease.title.trim(), // REQUIRED by schema
+          title: newLease.title.trim(),
           address: newLease.address,
           rent: Number(newLease.price),
           capacity: newLease.roommates
             ? Number(newLease.roommates)
-            : 1, // map roommates -> capacity
+            : 1,
           startDate: newLease.from || null,
           endDate: newLease.to || null,
           description: newLease.description || null,
@@ -284,7 +287,6 @@ const Dashboard = () => {
                 .map((a) => a.trim())
                 .filter(Boolean)
             : [],
-          buildingName: newLease.title.trim(), // optional convenience field
         }),
       });
 
@@ -299,7 +301,6 @@ const Dashboard = () => {
       const id = (created._id || "").toString();
       const title =
         created.title ||
-        created.buildingName ||
         created.address ||
         newLease.title ||
         "My listing";
@@ -311,7 +312,7 @@ const Dashboard = () => {
           title,
           price,
           status: "Active",
-          views: created.views ?? 0,
+          views: 0,
         },
         ...prev,
       ]);
@@ -413,7 +414,7 @@ const Dashboard = () => {
                   <Label htmlFor="address">Address</Label>
                   <Input
                     id="address"
-                    placeholder="123 State St, Madison, WI"
+                    placeholder="123 College Ave, Madison, WI"
                     value={newLease.address}
                     onChange={(e) =>
                       setNewLease((prev) => ({
@@ -501,7 +502,7 @@ const Dashboard = () => {
           </Dialog>
         </div>
 
-        {/* 2x2 layout: Profile / Smart Payments top, Posted Leases / Current Sublease bottom */}
+        {/* 2x2 layout: Profile / Smart Payments on top, Posted Leases / Current Sublease below */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Profile */}
           <Card>
@@ -529,7 +530,16 @@ const Dashboard = () => {
                       </p>
                     </div>
                   </div>
-                  {/* Edit Profile button removed as requested */}
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setInboxPeerId(undefined);
+                      setInboxOpen(true);
+                    }}
+                  >
+                    Open Inbox
+                  </Button>
                 </>
               ) : (
                 <div className="space-y-3">
@@ -656,6 +666,16 @@ const Dashboard = () => {
           </Card>
         </div>
       </div>
+
+      {/* Inbox modal */}
+      {userProfile && (
+        <MessagesModal
+          open={inboxOpen}
+          onOpenChange={setInboxOpen}
+          currentUserId={userProfile.id}
+          initialPeerId={inboxPeerId}
+        />
+      )}
     </div>
   );
 };

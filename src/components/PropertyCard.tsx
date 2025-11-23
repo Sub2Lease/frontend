@@ -1,23 +1,25 @@
+// components/PropertyCard.tsx
 import { Heart, MapPin, Calendar, Users, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 
-// Display property card details (get from backend later)
 interface PropertyCardProps {
-  id: number;
+  id: string | number;
   image: string;
   price: number;
   title: string;
   address: string;
-  availableFrom: string;
-  availableTo: string;
+  availableFrom?: string;
+  availableTo?: string;
   roommates: number;
   distance: number;
   amenities: string[];
-  onSave?: (id: number) => void;
+  onSave?: (id: number | string) => void;
   isSaved?: boolean;
+  ownerId?: string;                      // NEW
+  onMessage?: (ownerId: string) => void; // NEW
 }
 
 const PropertyCard = ({
@@ -33,12 +35,19 @@ const PropertyCard = ({
   amenities,
   onSave,
   isSaved = false,
+  ownerId,
+  onMessage,
 }: PropertyCardProps) => {
   const [saved, setSaved] = useState(isSaved);
 
   const handleSave = () => {
     setSaved(!saved);
     onSave?.(id);
+  };
+
+  const handleMessage = () => {
+    if (!ownerId) return;
+    onMessage?.(ownerId);
   };
 
   return (
@@ -53,7 +62,9 @@ const PropertyCard = ({
           size="icon"
           variant="ghost"
           className={`absolute top-3 right-3 ${
-            saved ? "text-primary bg-background/90" : "text-foreground bg-background/70"
+            saved
+              ? "text-primary bg-background/90"
+              : "text-foreground bg-background/70"
           } hover:bg-background/90 transition-all`}
           onClick={handleSave}
         >
@@ -63,22 +74,24 @@ const PropertyCard = ({
           ${price}/mo
         </Badge>
       </div>
-      
+
       <CardContent className="p-4 space-y-3">
         <h3 className="font-semibold text-lg">{title}</h3>
-        
+
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <MapPin className="w-4 h-4" />
           <span>{address}</span>
         </div>
-        
+
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Calendar className="w-4 h-4" />
           <span>
-            {availableFrom} - {availableTo}
+            {availableFrom && availableTo
+              ? `${availableFrom} - ${availableTo}`
+              : "-"}
           </span>
         </div>
-        
+
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
             <Users className="w-4 h-4" />
@@ -89,13 +102,26 @@ const PropertyCard = ({
             <span>{distance} mi to campus</span>
           </div>
         </div>
-        
-        <div className="flex flex-wrap gap-2 pt-2">
-          {amenities.slice(0, 3).map((amenity) => (
-            <Badge key={amenity} variant="outline" className="text-xs">
-              {amenity}
-            </Badge>
-          ))}
+
+        <div className="flex flex-wrap gap-2 pt-2 items-center justify-between">
+          <div className="flex flex-wrap gap-2">
+            {amenities.slice(0, 3).map((amenity) => (
+              <Badge key={amenity} variant="outline" className="text-xs">
+                {amenity}
+              </Badge>
+            ))}
+          </div>
+
+          {ownerId && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleMessage}
+              className="ml-auto"
+            >
+              Message
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

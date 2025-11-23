@@ -1,132 +1,71 @@
-import { useEffect, useRef, useState } from "react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
-import { Input } from "./ui/input";
-import { Search } from "lucide-react";
+// src/components/InteractiveMap.tsx
+import { useMemo } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Tooltip,
+} from "react-leaflet";
+import type { LatLngExpression } from "leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 
-// Mock property data for pins
+// You can later replace this with real coordinates from your listings
 const mockProperties = [
   { id: 1, lat: 43.0731, lng: -89.4012, title: "Modern Studio" },
   { id: 2, lat: 43.0765, lng: -89.3998, title: "Cozy 2BR" },
   { id: 3, lat: 43.0745, lng: -89.4025, title: "Spacious 1BR" },
-  { id: 4, lat: 43.0720, lng: -89.4050, title: "Affordable Room" },
-  { id: 5, lat: 43.0755, lng: -89.4010, title: "Luxury Loft" },
 ];
 
 const InteractiveMap = () => {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const [mapboxToken, setMapboxToken] = useState<string>("");
-  const [tokenSubmitted, setTokenSubmitted] = useState(false);
+  // Madison center
+  const center = useMemo<LatLngExpression>(() => [43.0731, -89.4012], []);
 
-  const initializeMap = (token: string) => {
-    if (!mapContainer.current || map.current) return;
-
-    mapboxgl.accessToken = token;
-    
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/dark-v11",
-      center: [-89.4012, 43.0731], // UW Madison coordinates
-      zoom: 14,
-      pitch: 45,
-    });
-
-    // Add navigation controls
-    map.current.addControl(
-      new mapboxgl.NavigationControl({
-        visualizePitch: true,
-      }),
-      "top-right"
-    );
-
-    // Add property pins
-    map.current.on("load", () => {
-      mockProperties.forEach((property) => {
-        const el = document.createElement("div");
-        el.className = "w-4 h-4 bg-primary rounded-full shadow-[0_0_15px_hsl(var(--primary))] cursor-pointer hover:scale-125 transition-transform animate-pulse-glow";
-        
-        const marker = new mapboxgl.Marker({ element: el })
-          .setLngLat([property.lng, property.lat])
-          .setPopup(
-            new mapboxgl.Popup({ offset: 25 })
-              .setHTML(`
-                <div class="text-foreground bg-card p-2 rounded">
-                  <h3 class="font-bold">${property.title}</h3>
-                  <p class="text-sm text-muted-foreground">Click to view details</p>
-                </div>
-              `)
-          )
-          .addTo(map.current!);
-      });
-    });
-  };
-
-  const handleTokenSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (mapboxToken.trim()) {
-      setTokenSubmitted(true);
-      initializeMap(mapboxToken.trim());
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      map.current?.remove();
-    };
-  }, []);
-
-  if (!tokenSubmitted) {
-    return (
-      <div className="relative w-full h-full bg-card/50 backdrop-blur-sm rounded-lg border border-border flex items-center justify-center p-6">
-        <div className="max-w-md w-full space-y-4">
-          <div className="text-center space-y-2">
-            <h3 className="text-lg font-semibold">Mapbox Token Required</h3>
-            <p className="text-sm text-muted-foreground">
-              Enter your Mapbox public token to view the interactive map. Get one free at{" "}
-              <a href="https://mapbox.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                mapbox.com
-              </a>
-            </p>
+  // Red glowing pin icon (black/white/red aesthetic)
+  const redPinIcon = useMemo(
+    () =>
+      L.divIcon({
+        className: "",
+        html: `
+          <div class="relative">
+            <div class="w-3 h-3 rounded-full bg-red-500 border border-white shadow-[0_0_12px_rgba(248,113,113,0.9)]"></div>
+            <div class="absolute inset-0 rounded-full bg-red-500/40 blur-sm"></div>
           </div>
-          <form onSubmit={handleTokenSubmit} className="space-y-3">
-            <Input
-              type="text"
-              placeholder="pk.ey..."
-              value={mapboxToken}
-              onChange={(e) => setMapboxToken(e.target.value)}
-              className="w-full"
-            />
-            <button
-              type="submit"
-              className="w-full bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
-            >
-              Initialize Map
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
+        `,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      }),
+    []
+  );
 
   return (
-    <div className="relative w-full h-full">
-      {/* Search bar */}
-      <div className="absolute top-4 left-4 right-4 z-10">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search Madison..."
-            className="pl-10 bg-card/90 backdrop-blur-sm border-border/50"
-          />
-        </div>
-      </div>
+    <div className="relative w-full h-full rounded-lg overflow-hidden border border-border">
+      <MapContainer
+        center={center}
+        zoom={14}
+        scrollWheelZoom={true}
+        className="w-full h-full"
+      >
+        {/* Brighter grayscale base map */}
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        />
 
-      {/* Map container */}
-      <div ref={mapContainer} className="absolute inset-0 rounded-lg" />
-      
-      {/* Dark overlay gradient */}
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-background/20 via-transparent to-background/20 rounded-lg" />
+        {mockProperties.map((p) => (
+          <Marker
+            key={p.id}
+            position={[p.lat, p.lng]}
+            icon={redPinIcon}
+          >
+            <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
+              <span className="font-semibold text-xs">{p.title}</span>
+            </Tooltip>
+          </Marker>
+        ))}
+      </MapContainer>
+
+      {/* very subtle dark overlay, just to blend with UI */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/20" />
     </div>
   );
 };
