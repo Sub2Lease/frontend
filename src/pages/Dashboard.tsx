@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MessagesModal } from "@/components/MessagesModal";
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 const API_BASE = "https://sub2leasebackend.onrender.com";
 
@@ -35,8 +35,6 @@ interface ApiListing {
   address?: string;
   title?: string;
   capacity?: number;
-  images?: string[];
-  description?: string;
   owner?: string;
 }
 
@@ -50,6 +48,23 @@ interface ApiAgreement {
   owner?: string;
   tenant?: string;
   propertyTitle?: string;
+  ownerSigned?: boolean;   // NEW
+  tenantSigned?: boolean;  // NEW
+}
+
+interface Payment {
+  id: string;
+  date: string;
+  endDate?: string;
+  amount: number;
+  status: string;      // human-readable status for the card
+  property: string;
+  agreementId: string; // so we can sign it
+}
+
+
+interface ApiAgreementWithListing extends ApiAgreement {
+  listingTitle?: string;
 }
 
 interface UserProfile {
@@ -67,14 +82,6 @@ interface PostedLease {
   views?: number;
 }
 
-interface Payment {
-  id: string;
-  date: string;
-  endDate?: string;
-  amount: number;
-  status: string;
-  property: string;
-}
 
 const Dashboard = () => {
   const [isPostingLease, setIsPostingLease] = useState(false);
@@ -85,6 +92,7 @@ const Dashboard = () => {
 
   const [postedLeases, setPostedLeases] = useState<PostedLease[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<Payment[]>([]);
+  const [agreements, setAgreements] = useState<ApiAgreementWithListing[]>([]);
 
   const [newLease, setNewLease] = useState({
     title: "",
@@ -97,9 +105,9 @@ const Dashboard = () => {
     description: "",
   });
 
-  // messaging modal state
+  // messaging modal state (for inbox button)
   const [inboxOpen, setInboxOpen] = useState(false);
-  const [inboxPeerId, setInboxPeerId] = useState<string | undefined>(undefined);
+  const [inboxPeerId] = useState<string | undefined>(undefined);
 
   const navigate = useNavigate();
 
@@ -164,19 +172,14 @@ const Dashboard = () => {
       try {
         // 1) My listings (as owner)
         const myListingsRes = await fetch(
-          `${API_BASE}/listings?ownerId=${encodeURIComponent(
-            userProfile.id
-          )}`
+          `${API_BASE}/listings?ownerId=${encodeURIComponent(userProfile.id)}`
         );
         if (myListingsRes.ok) {
           const data: ApiListing[] = await myListingsRes.json();
           setPostedLeases(
             data.map((listing) => {
               const id = (listing._id || "").toString();
-              const title =
-                listing.title ||
-                listing.address ||
-                "My listing";
+              const title = listing.title || listing.address || "My listing";
               const price = listing.rent ?? 0;
 
               return {
@@ -205,37 +208,108 @@ const Dashboard = () => {
           ),
         ]);
 
-        const payments: ApiAgreement[] = [];
+        const allAgreements: ApiAgreement[] = [];
 
         if (asOwnerRes.ok) {
           const arr: ApiAgreement[] = await asOwnerRes.json();
-          payments.push(...arr);
+          allAgreements.push(...arr);
         }
         if (asTenantRes.ok) {
           const arr: ApiAgreement[] = await asTenantRes.json();
-          payments.push(...arr);
+          allAgreements.push(...arr);
         }
 
         // Deduplicate by _id
         const seen = new Map<string, ApiAgreement>();
-        for (const p of payments) {
-          const id = (p._id || "").toString();
+        for (const a of allAgreements) {
+          const id = (a._id || "").toString();
           if (!id) continue;
-          if (!seen.has(id)) seen.set(id, p);
+          if (!seen.has(id)) seen.set(id, a);
         }
-
         const unique = Array.from(seen.values());
 
-        setPaymentHistory(
-          unique.map((p) => ({
-            id: (p._id || "").toString(),
-            date: p.startDate || "",
-            endDate: p.endDate || "",
-            amount: p.rent ?? 0,
-            status: p.payTerm || "Active",
-            property: p.propertyTitle || "",
+        // Fetch listings for each agreement to get titles
+        const listingIds = Array.from(
+          new Set(
+            unique
+              .map((a) => (a.listing ? a.listing.toString() : ""))
+              .filter(Boolean)
+          )
+        );
+
+        const listingTitleMap: Record<string, string> = {};
+
+        await Promise.all(
+          listingIds.map(async (lid) => {
+            try {
+              const res = await fetch(
+                `${API_BASE}/listings?listingId=${encodeURIComponent(lid)}`
+              );
+              if (!res.ok) return;
+              const arr: ApiListing[] = await res.json();
+              const listing = arr[0];
+              if (listing) {
+                listingTitleMap[lid] =
+                  listing.title || listing.address || "Sublease";
+              }
+            } catch (err) {
+              console.error("Failed to load listing for agreement", err);
+            }
+          })
+        );
+
+        setAgreements(
+          unique.map((a) => ({
+            ...a,
+            listingTitle: a.listing
+              ? listingTitleMap[a.listing.toString()] || "Sublease"
+              : "Sublease",
           }))
         );
+
+        // inside useEffect that depends on userProfile
+const userId = userProfile.id;
+
+setPaymentHistory(
+  unique.map((p) => {
+    const id = (p._id || "").toString();
+    const ownerId = p.owner?.toString();
+    const tenantId = p.tenant?.toString();
+
+    const ownerSigned = !!p.ownerSigned;
+    const tenantSigned = !!p.tenantSigned;
+
+    const youAreOwner = ownerId === userId;
+    const youAreTenant = tenantId === userId;
+
+    let status = "Unsigned";
+
+    if (ownerSigned && tenantSigned) {
+      status = "Fully signed";
+    } else if (
+      (youAreOwner && ownerSigned && !tenantSigned) ||
+      (youAreTenant && tenantSigned && !ownerSigned)
+    ) {
+      status = "You signed – waiting for other party";
+    } else if (
+      (youAreOwner && !ownerSigned && tenantSigned) ||
+      (youAreTenant && !tenantSigned && ownerSigned)
+    ) {
+      status = "Pending your signature";
+    }
+
+    return {
+      id,
+      agreementId: id,
+      date: p.startDate || "",
+      endDate: p.endDate || "",
+      amount: p.rent ?? 0,
+      status,
+      property: p.propertyTitle || "",
+    } as Payment;
+  })
+);
+
       } catch (err) {
         console.error("Failed to load dashboard data", err);
       }
@@ -250,9 +324,6 @@ const Dashboard = () => {
       .map((n) => n[0])
       .join("")
       .toUpperCase() || "U";
-
-  // pick "current sublease" as first agreement for now
-  const currentSublease = paymentHistory[0] || null;
 
   // ---------- Post new listing ----------
   const handleSubmitListing = async () => {
@@ -277,9 +348,7 @@ const Dashboard = () => {
           title: newLease.title.trim(),
           address: newLease.address,
           rent: Number(newLease.price),
-          capacity: newLease.roommates
-            ? Number(newLease.roommates)
-            : 1,
+          capacity: newLease.roommates ? Number(newLease.roommates) : 1,
           startDate: newLease.from || null,
           endDate: newLease.to || null,
           description: newLease.description || null,
@@ -302,10 +371,7 @@ const Dashboard = () => {
 
       const id = (created._id || "").toString();
       const title =
-        created.title ||
-        created.address ||
-        newLease.title ||
-        "My listing";
+        created.title || created.address || newLease.title || "My listing";
       const price = created.rent ?? 0;
 
       setPostedLeases((prev) => [
@@ -338,6 +404,37 @@ const Dashboard = () => {
     }
   };
 
+  const handleSignAgreement = async (agreementId: string) => {
+  if (!userProfile) return;
+
+  try {
+    const res = await fetch(
+      `${API_BASE}/agreements/${agreementId}/sign`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: userProfile.id }),
+      }
+    );
+
+    if (!res.ok) {
+      console.error("Failed to sign agreement", await res.text());
+      alert("Failed to sign agreement");
+      return;
+    }
+
+    // re-load agreements so statuses update
+    // simplest: call your `loadDashboard()` again or just re-fetch agreements
+    // If loadDashboard is inside useEffect, you can either:
+    //  - refactor it out so you can call it here, or
+    //  - do a small fetch of agreements and call setPaymentHistory again.
+  } catch (err) {
+    console.error("Error signing agreement", err);
+    alert("Error signing agreement");
+  }
+};
+
+
   return (
     <div className="min-h-screen pt-20 pb-12">
       <div className="container mx-auto px-6">
@@ -358,7 +455,7 @@ const Dashboard = () => {
                 <DialogTitle>Post a New Sublease</DialogTitle>
                 <DialogDescription>
                   Fill in the details about your property. Your listing will
-                  appear on the map once submitted.
+                  appear on the properties page once submitted.
                 </DialogDescription>
               </DialogHeader>
 
@@ -506,120 +603,113 @@ const Dashboard = () => {
 
         {/* 2x2 layout: Profile / Smart Payments on top, Posted Leases / Current Sublease below */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Profile */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {loadingProfile ? (
-              <div className="h-20 animate-pulse rounded-md bg-muted" />
-            ) : userProfile ? (
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <Avatar className="w-20 h-20">
-                    {userProfile.avatarUrl && (
-                      <AvatarImage src={userProfile.avatarUrl} />
-                    )}
-                    <AvatarFallback>{initials}</AvatarFallback>
-                  </Avatar>
+          {/* Profile */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {loadingProfile ? (
+                <div className="h-20 animate-pulse rounded-md bg-muted" />
+              ) : userProfile ? (
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="w-20 h-20">
+                      {userProfile.avatarUrl && (
+                        <AvatarImage src={userProfile.avatarUrl} />
+                      )}
+                      <AvatarFallback>{initials}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-semibold text-lg">
+                        {userProfile.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {userProfile.email}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-3"
+                        onClick={() => setInboxOpen(true)}
+                      >
+                        Open Inbox
+                      </Button>
+                    </div>
+                  </div>
+
                   <div>
-                    <h3 className="font-semibold text-lg">
-                      {userProfile.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {userProfile.email}
-                    </p>
+                    <ConnectButton.Custom>
+                      {({
+                        account,
+                        chain,
+                        openAccountModal,
+                        openConnectModal,
+                        mounted,
+                      }) => {
+                        const ready = mounted;
+                        const connected = ready && account && chain;
+
+                        return (
+                          <div
+                            {...(!ready && {
+                              "aria-hidden": true,
+                              style: {
+                                opacity: 0,
+                                pointerEvents: "none",
+                                userSelect: "none",
+                              },
+                            })}
+                          >
+                            {!connected ? (
+                              <button
+                                onClick={openConnectModal}
+                                className="
+                                  px-4 py-2 rounded-xl 
+                                  bg-[#2a2a2a] text-white 
+                                  border border-white/10 
+                                  shadow-sm
+                                  hover:bg-red-600 hover:border-red-600
+                                  transition-all
+                                "
+                              >
+                                Connect Wallet
+                              </button>
+                            ) : (
+                              <button
+                                onClick={openAccountModal}
+                                className="
+                                  px-4 py-2 rounded-xl 
+                                  bg-[#2a2a2a] text-white 
+                                  border border-white/10 
+                                  shadow-sm
+                                  hover:bg-red-600 hover:border-red-600
+                                  transition-all
+                                "
+                              >
+                                {account.displayName}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      }}
+                    </ConnectButton.Custom>
                   </div>
                 </div>
-
-                {/* Right side: wallet + inbox */}
-                <div className="flex flex-col items-end gap-2">
-                  <ConnectButton.Custom>
-                    {({
-                      account,
-                      chain,
-                      openAccountModal,
-                      openConnectModal,
-                      mounted,
-                    }) => {
-                      const ready = mounted;
-                      const connected = ready && account && chain;
-
-                      return (
-                        <div
-                          {...(!ready && {
-                            "aria-hidden": true,
-                            style: {
-                              opacity: 0,
-                              pointerEvents: "none",
-                              userSelect: "none",
-                            },
-                          })}
-                        >
-                          {!connected ? (
-                            <button
-                              onClick={openConnectModal}
-                              className="
-                                px-4 py-2 rounded-xl 
-                                bg-[#2a2a2a] text-white 
-                                border border-white/10 
-                                shadow-sm
-                                hover:bg-red-600 hover:border-red-600
-                                transition-all
-                              "
-                            >
-                              Connect Wallet
-                            </button>
-                          ) : (
-                            <button
-                              onClick={openAccountModal}
-                              className="
-                                px-4 py-2 rounded-xl 
-                                bg-[#2a2a2a] text-white 
-                                border border-white/10 
-                                shadow-sm
-                                hover:bg-red-600 hover:border-red-600
-                                transition-all
-                              "
-                            >
-                              {account.displayName}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    }}
-                  </ConnectButton.Custom>
-
-                  {/* Inbox button – opens shared MessagesModal */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setInboxPeerId(undefined); // show all conversations
-                      setInboxOpen(true);
-                    }}
-                    className="mt-1"
-                  >
-                    Open Inbox
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    You are not logged in.
+                  </p>
+                  <Button className="w-full" onClick={() => navigate("/auth")}>
+                    Log In / Sign Up
                   </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  You are not logged in.
-                </p>
-                <Button className="w-full" onClick={() => navigate("/auth")}>
-                  Log In / Sign Up
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
 
-
-          {/* Smart Payments */}
+          {/* Smart Payments (still a simple agreements list) */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -648,10 +738,8 @@ const Dashboard = () => {
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {payment.date}
+                        {payment.property || "Sublease"} — {payment.date}
                       </p>
-                      {/* TODO: show more sublease details here
-                          (property name, role, schedule, etc.) in a nicer card format */}
                     </div>
                   ))}
                 </div>
@@ -700,28 +788,82 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Current Sublease */}
+          {/* Current Subleases with signed/unsigned indicators */}
           <Card>
             <CardHeader>
-              <CardTitle>Current Sublease</CardTitle>
+              <CardTitle>Current Subleases</CardTitle>
             </CardHeader>
             <CardContent>
-              {!currentSublease ? (
+              {agreements.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  You have no active subleases yet.
+                  You have no lease agreements yet.
                 </p>
               ) : (
-                <div className="space-y-2">
-                  <h3 className="font-semibold">
-                    {currentSublease.property || "Sublease"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    ${currentSublease.amount}/mo
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {currentSublease.date} –{" "}
-                    {currentSublease.endDate || "ongoing"}
-                  </p>
+                <div className="space-y-3">
+                  {agreements.map((a) => {
+                    const id = (a._id || "").toString();
+                    const youAreOwner = a.owner === userProfile?.id;
+                    const role = youAreOwner ? "Owner" : "Tenant";
+                    const youSigned = youAreOwner
+                      ? !!a.ownerSigned
+                      : !!a.tenantSigned;
+                    const otherSigned = youAreOwner
+                      ? !!a.tenantSigned
+                      : !!a.ownerSigned;
+
+                    let statusLabel = "Unsigned";
+                    let statusVariant: "outline" | "default" =
+                      "outline";
+
+                    if (youSigned && otherSigned) {
+                      statusLabel = "Fully signed";
+                      statusVariant = "default";
+                    } else if (youSigned && !otherSigned) {
+                      statusLabel = "Waiting for other party";
+                    } else if (!youSigned && otherSigned) {
+                      statusLabel = "Awaiting your signature";
+                    }
+
+                    return (
+                      <div
+                        key={id}
+                        className="p-3 border border-border rounded-lg space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-sm">
+                              {a.listingTitle || "Sublease"}{" "}
+                              <span className="text-xs text-muted-foreground">
+                                ({role})
+                              </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {a.startDate || "Start"} –{" "}
+                              {a.endDate || "End"}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Rent ${a.rent ?? 0} •{" "}
+                              {a.numPeople || 1} people
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <Badge variant={statusVariant} className="text-xs">
+                              {statusLabel}
+                            </Badge>
+                            {!youSigned && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSignAgreement(id)}
+                              >
+                                Sign Agreement
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

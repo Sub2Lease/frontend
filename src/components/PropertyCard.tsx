@@ -19,6 +19,9 @@ interface PropertyCardProps {
   isSaved?: boolean;
   ownerId?: string;
   onMessage?: (ownerId: string) => void;
+  // NEW: agreement controls
+  canMakeAgreement?: boolean;
+  onMakeAgreement?: () => void;
 }
 
 const PropertyCard = ({
@@ -36,8 +39,9 @@ const PropertyCard = ({
   isSaved = false,
   ownerId,
   onMessage,
+  canMakeAgreement,
+  onMakeAgreement,
 }: PropertyCardProps) => {
-  
   const handleSave = () => {
     onSave?.(id);
   };
@@ -45,6 +49,11 @@ const PropertyCard = ({
   const handleMessage = () => {
     if (!ownerId) return;
     onMessage?.(ownerId);
+  };
+
+  const handleMakeAgreement = () => {
+    if (!canMakeAgreement) return;
+    onMakeAgreement?.();
   };
 
   return (
@@ -56,7 +65,7 @@ const PropertyCard = ({
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
 
-        {/* Save button — now controlled by props */}
+        {/* Save button */}
         <Button
           size="icon"
           variant="ghost"
@@ -112,16 +121,24 @@ const PropertyCard = ({
             ))}
           </div>
 
-          {ownerId && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleMessage}
-              className="ml-auto"
-            >
-              Message
-            </Button>
-          )}
+          {/* Actions: Message + Make Agreement */}
+          <div className="flex gap-2 ml-auto">
+            {ownerId && onMessage && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleMessage}
+              >
+                Message
+              </Button>
+            )}
+
+            {canMakeAgreement && onMakeAgreement && (
+              <Button size="sm" onClick={handleMakeAgreement}>
+                Make Agreement
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

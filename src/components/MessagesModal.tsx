@@ -1,23 +1,29 @@
-// MessagesModal.tsx
-import { useEffect, useMemo, useState } from "react";
+// src/components/MessagesModal.tsx
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 const API_BASE = "https://sub2leasebackend.onrender.com";
 
-interface ApiMessage {
+interface Message {
   _id?: string;
   sender: string;
   users: string[];
   content: string;
   createdAt?: string;
+}
+
+interface ConversationPreview {
+  peerId: string;
+  lastMessage: string;
+  lastTimestamp?: string;
 }
 
 interface MessagesModalProps {
@@ -33,90 +39,133 @@ export function MessagesModal({
   currentUserId,
   initialPeerId,
 }: MessagesModalProps) {
-  const [allMessages, setAllMessages] = useState<ApiMessage[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [activePeerId, setActivePeerId] = useState<string | null>(
-    initialPeerId ?? null
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [conversations, setConversations] = useState<ConversationPreview[]>([]);
+  const [activePeerId, setActivePeerId] = useState<string | undefined>(
+    initialPeerId
   );
   const [draft, setDraft] = useState("");
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
-  // Load all messages for this user when modal opens
+  // chat scroll container
+  const chatRef = useRef<HTMLDivElement | null>(null);
+
+  // Load all conversations for current user
   useEffect(() => {
-    if (!open) return;
+    if (!open || !currentUserId) return;
 
-    const fetchMessages = async () => {
-      setLoading(true);
+    const loadConversations = async () => {
       try {
         const res = await fetch(
           `${API_BASE}/messages?user=${encodeURIComponent(currentUserId)}`
         );
         if (!res.ok) {
-          console.error("Failed to load messages", await res.text());
+          console.error("Failed to load messages list", await res.text());
           return;
         }
-        const msgs: ApiMessage[] = await res.json();
 
-        // sort earliest first
-        msgs.sort((a, b) => {
-          const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
-          const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
-          return ta - tb;
+        const allMessages: Message[] = await res.json();
+
+        // group by peer (other user in .users array)
+        const byPeer = new Map<string, Message[]>();
+        for (const m of allMessages) {
+          const peer =
+            m.users.find((u) => u !== currentUserId) || m.sender || "unknown";
+          if (!byPeer.has(peer)) byPeer.set(peer, []);
+          byPeer.get(peer)!.push(m);
+        }
+
+        const previews: ConversationPreview[] = [];
+        for (const [peerId, msgs] of byPeer.entries()) {
+          // sort ascending by time
+          msgs.sort((a, b) => {
+            const ta = new Date(a.createdAt ?? 0).getTime();
+            const tb = new Date(b.createdAt ?? 0).getTime();
+            return ta - tb;
+          });
+          const last = msgs[msgs.length - 1];
+          previews.push({
+            peerId,
+            lastMessage: last?.content ?? "",
+            lastTimestamp: last?.createdAt,
+          });
+        }
+
+        // newest conversation at top of inbox
+        previews.sort((a, b) => {
+          const ta = new Date(a.lastTimestamp ?? 0).getTime();
+          const tb = new Date(b.lastTimestamp ?? 0).getTime();
+          return tb - ta;
         });
 
-        setAllMessages(msgs);
+        setConversations(previews);
 
-        if (!activePeerId && msgs.length > 0) {
-          // default peer = first conversation or initialPeerId if present
-          const peers = new Set<string>();
-          for (const m of msgs) {
-            const other = m.users.find((u) => u !== currentUserId) ?? currentUserId;
-            peers.add(other);
-          }
-          if (initialPeerId && peers.has(initialPeerId)) {
-            setActivePeerId(initialPeerId);
-          } else {
-            const first = peers.values().next().value as string | undefined;
-            if (first) setActivePeerId(first);
-          }
-        } else if (initialPeerId && activePeerId !== initialPeerId) {
+        // If we have an initial peer and it's in the list, auto-select it
+        if (initialPeerId) {
           setActivePeerId(initialPeerId);
+        } else if (!activePeerId && previews.length > 0) {
+          setActivePeerId(previews[0].peerId);
         }
       } catch (err) {
-        console.error("Error loading messages", err);
-      } finally {
-        setLoading(false);
+        console.error("Error loading conversations", err);
       }
     };
 
-    fetchMessages();
+    loadConversations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, currentUserId]);
 
-  // group by other participant
-  const conversations = useMemo(() => {
-    const map = new Map<string, ApiMessage[]>();
-    for (const m of allMessages) {
-      const other = m.users.find((u) => u !== currentUserId) ?? currentUserId;
-      if (!map.has(other)) map.set(other, []);
-      map.get(other)!.push(m);
-    }
-    return map;
-  }, [allMessages, currentUserId]);
+  // Load messages for active peer
+  useEffect(() => {
+    if (!open || !currentUserId || !activePeerId) return;
 
-  const activeMessages = useMemo(() => {
-    if (!activePeerId) return [];
-    const msgs = conversations.get(activePeerId) ?? [];
-    // ensure earliest first
-    return [...msgs].sort((a, b) => {
-      const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
-      const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
-      return ta - tb;
-    });
-  }, [conversations, activePeerId]);
+    const loadMessages = async () => {
+      setLoadingMessages(true);
+      try {
+        const res = await fetch(
+          `${API_BASE}/messages?user=${encodeURIComponent(
+            currentUserId
+          )}&user2=${encodeURIComponent(activePeerId)}`
+        );
+        if (!res.ok) {
+          console.error("Failed to load conversation", await res.text());
+          setMessages([]);
+          return;
+        }
+        const data: Message[] = await res.json();
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activePeerId || !draft.trim()) return;
+        // sort oldest → newest, like WhatsApp/Snapchat
+        data.sort((a, b) => {
+          const ta = new Date(a.createdAt ?? 0).getTime();
+          const tb = new Date(b.createdAt ?? 0).getTime();
+          return ta - tb;
+        });
+
+        setMessages(data);
+      } catch (err) {
+        console.error("Error loading conversation", err);
+        setMessages([]);
+      } finally {
+        setLoadingMessages(false);
+      }
+    };
+
+    loadMessages();
+  }, [open, currentUserId, activePeerId]);
+
+  // Scroll to bottom whenever messages change, active conversation changes, or modal opens
+  useEffect(() => {
+    if (!open) return;
+    const el = chatRef.current;
+    if (!el) return;
+    // scroll to bottom
+    el.scrollTop = el.scrollHeight;
+  }, [messages, activePeerId, open]);
+
+  const sortedMessages = useMemo(() => messages.reverse(), [messages]);
+
+  const handleSend = async () => {
+    if (!draft.trim() || !activePeerId) return;
 
     const content = draft.trim();
     setDraft("");
@@ -133,123 +182,161 @@ export function MessagesModal({
       });
 
       if (!res.ok) {
-        console.error("Send message failed", await res.text());
+        console.error("Failed to send message", await res.text());
         return;
       }
 
-      const saved: ApiMessage = await res.json();
-      setAllMessages((prev) => [...prev, saved]);
+      const saved: Message = await res.json();
+
+      // Append at bottom
+      setMessages((prev) => [...prev, saved]);
+
+      // Update conversation preview
+      setConversations((prev) => {
+        const next = [...prev];
+        const idx = next.findIndex((c) => c.peerId === activePeerId);
+        const updated: ConversationPreview = {
+          peerId: activePeerId,
+          lastMessage: content,
+          lastTimestamp: saved.createdAt,
+        };
+        if (idx === -1) next.unshift(updated);
+        else {
+          next[idx] = updated;
+          // move to top
+          next.sort((a, b) => {
+            const ta = new Date(a.lastTimestamp ?? 0).getTime();
+            const tb = new Date(b.lastTimestamp ?? 0).getTime();
+            return tb - ta;
+          });
+        }
+        return next;
+      });
     } catch (err) {
-      console.error("Send message error", err);
+      console.error("Error sending message", err);
     }
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) {
-          setDraft("");
-        }
-        onOpenChange(next);
-      }}
-    >
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Messages</DialogTitle>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl h-[75vh] flex flex-col bg-background">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="text-2xl font-bold">Messages</DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-3 gap-4">
-          {/* Conversation list */}
-          <div className="col-span-1 border-r border-border pr-3 space-y-2">
-            <h3 className="text-sm font-semibold text-muted-foreground">
-              Conversations
-            </h3>
-            {loading && (
-              <p className="text-xs text-muted-foreground">Loading…</p>
-            )}
-            {!loading && conversations.size === 0 && (
-              <p className="text-xs text-muted-foreground">
-                No messages yet. Start a conversation from a listing.
-              </p>
-            )}
-            {!loading &&
-              Array.from(conversations.keys()).map((peerId) => (
-                <button
-                  key={peerId}
-                  type="button"
-                  onClick={() => setActivePeerId(peerId)}
-                  className={cn(
-                    "w-full text-left px-3 py-2 rounded-md text-xs border",
-                    "hover:bg-accent hover:border-accent-foreground/20",
-                    activePeerId === peerId
-                      ? "bg-accent border-accent-foreground/30"
-                      : "border-border/60"
-                  )}
-                >
-                  <div className="font-medium">
-                    User {peerId.slice(0, 6)}…
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {conversations.get(peerId)?.slice(-1)[0]?.content ?? ""}
-                  </div>
-                </button>
-              ))}
+        <div className="flex flex-1 gap-4 overflow-hidden">
+          {/* Inbox list */}
+          <div className="w-64 bg-muted/40 rounded-lg flex flex-col overflow-hidden">
+            <div className="px-4 py-3 border-b border-border font-semibold">
+              Inbox
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {conversations.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-muted-foreground">
+                  No messages yet.
+                </div>
+              ) : (
+                conversations.map((c) => (
+                  <button
+                    key={c.peerId}
+                    className={cn(
+                      "w-full text-left px-4 py-3 border-b border-border/40 hover:bg-muted/60 transition-colors",
+                      activePeerId === c.peerId && "bg-primary text-primary-foreground"
+                    )}
+                    onClick={() => setActivePeerId(c.peerId)}
+                  >
+                    <div className="font-medium text-sm truncate">
+                      {c.peerId}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {c.lastMessage}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
           </div>
 
-          {/* Active conversation */}
-          <div className="col-span-2 flex flex-col h-80">
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-              {!activePeerId && (
-                <p className="text-sm text-muted-foreground">
-                  Select a conversation to start messaging.
-                </p>
-              )}
+          {/* Chat area */}
+          <div className="flex-1 flex flex-col rounded-lg border border-border bg-muted/20 overflow-hidden">
+            <div className="px-4 py-3 border-b border-border text-sm text-muted-foreground">
+              Chatting as{" "}
+              <span className="font-mono text-foreground">
+                {currentUserId}
+              </span>
+            </div>
 
-              {activePeerId &&
-                activeMessages.map((m) => {
-                  const fromMe = m.sender === currentUserId;
+            {/* Messages list */}
+            <div
+              ref={chatRef}
+              className="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-background/60"
+            >
+              {!activePeerId ? (
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                  Select a conversation from the inbox.
+                </div>
+              ) : loadingMessages && sortedMessages.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                  Loading messages...
+                </div>
+              ) : sortedMessages.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                  Start the conversation!
+                </div>
+              ) : (
+                sortedMessages.map((m) => {
+                  const isMine = m.sender === currentUserId;
                   return (
                     <div
                       key={m._id}
-                      className={cn("flex", fromMe ? "justify-end" : "justify-start")}
+                      className={cn(
+                        "w-full flex mb-1",
+                        isMine ? "justify-end" : "justify-start"
+                      )}
                     >
                       <div
                         className={cn(
-                          "max-w-[70%] rounded-lg px-3 py-2 text-sm",
-                          fromMe
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-foreground"
+                          "max-w-[70%] px-3 py-2 rounded-2xl text-sm",
+                          isMine
+                            ? "bg-primary text-primary-foreground rounded-br-sm"
+                            : "bg-muted text-foreground rounded-bl-sm"
                         )}
                       >
-                        <div>{m.content}</div>
-                        {m.createdAt && (
-                          <div className="mt-1 text-[10px] opacity-80">
-                            {new Date(m.createdAt).toLocaleString()}
-                          </div>
-                        )}
+                        {m.content}
                       </div>
                     </div>
                   );
-                })}
+                })
+              )}
             </div>
 
             {/* Input */}
-            {activePeerId && (
-              <form
-                onSubmit={handleSend}
-                className="mt-3 flex items-center gap-2"
+            <div className="border-t border-border px-4 py-3 flex gap-3 items-center bg-background">
+              <Input
+                placeholder={
+                  activePeerId
+                    ? "Type a message..."
+                    : "Select a conversation from the inbox."
+                }
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                disabled={!activePeerId}
+                className="flex-1"
+              />
+              <Button
+                onClick={handleSend}
+                disabled={!activePeerId || !draft.trim()}
+                className="px-6"
               >
-                <Input
-                  placeholder="Type a message…"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                />
-                <Button type="submit" disabled={!draft.trim()}>
-                  Send
-                </Button>
-              </form>
-            )}
+                Send
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

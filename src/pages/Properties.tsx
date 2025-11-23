@@ -5,6 +5,16 @@ import PropertyCard from "@/components/PropertyCard";
 import PropertyFilters from "@/components/PropertyFilters";
 import InteractiveMap from "@/components/InteractiveMap";
 import { MessagesModal } from "@/components/MessagesModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 const API_BASE = "https://sub2leasebackend.onrender.com";
 
@@ -17,6 +27,9 @@ interface ApiListing {
   images?: string[];
   description?: string;
   owner?: string;
+  securityDeposit?: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 interface Property {
@@ -31,6 +44,7 @@ interface Property {
   roommates: number;
   distance: number;
   amenities: string[];
+  securityDeposit?: number;
 }
 
 function getCurrentUser() {
@@ -59,9 +73,23 @@ const Properties = () => {
     undefined
   );
 
+  // agreement modal state
+  const [agreementOpen, setAgreementOpen] = useState(false);
+  const [agreementListing, setAgreementListing] = useState<Property | null>(
+    null
+  );
+  const [agreementSubmitting, setAgreementSubmitting] = useState(false);
+  const [agreementForm, setAgreementForm] = useState({
+    startDate: "",
+    endDate: "",
+    rent: "",
+    securityDeposit: "",
+    numPeople: "1",
+    payTerm: "monthly",
+  });
+
   const currentUser = getCurrentUser();
   const currentUserId: string | null = currentUser?._id ?? null;
-  console.log(currentUserId);
 
   // Load listings from backend
   useEffect(() => {
@@ -82,11 +110,12 @@ const Properties = () => {
           price: l.rent ?? 0,
           title: l.title || l.address || "Sublease",
           address: l.address || "Madison, WI",
-          availableFrom: "",
-          availableTo: "",
+          availableFrom: l.startDate,
+          availableTo: l.endDate,
           roommates: l.capacity ?? 0,
           distance: 0,
           amenities: [],
+          securityDeposit: l.securityDeposit,
         }));
 
         setProperties(normalized);
@@ -98,29 +127,29 @@ const Properties = () => {
     fetchListings();
   }, []);
 
+  // Load saved listings for current user
   useEffect(() => {
-  const loadSaved = async () => {
-    if (!currentUserId) return;
+    const loadSaved = async () => {
+      if (!currentUserId) return;
 
-    try {
-      const res = await fetch(`${API_BASE}/listings/saved/${currentUserId}`);
-      if (!res.ok) {
-        console.error("Failed to load saved listings");
-        return;
+      try {
+        const res = await fetch(`${API_BASE}/listings/saved/${currentUserId}`);
+        if (!res.ok) {
+          console.error("Failed to load saved listings");
+          return;
+        }
+
+        const savedListings = await res.json(); // array of listing objects
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const savedIds = savedListings.map((l: any) => String(l._id));
+        setSavedProperties(new Set(savedIds));
+      } catch (err) {
+        console.error("Error loading saved listings", err);
       }
+    };
 
-      const savedListings = await res.json(); // array of listing objects
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const savedIds = savedListings.map((l: any) => String(l._id));
-      setSavedProperties(new Set(savedIds));
-    } catch (err) {
-      console.error("Error loading saved listings", err);
-    }
-  };
-
-  loadSaved();
-}, [currentUserId]);
-
+    loadSaved();
+  }, [currentUserId]);
 
   const handleSaveProperty = async (id: string | number) => {
     if (!currentUserId) {
@@ -132,7 +161,7 @@ const Properties = () => {
     const isSaved = savedProperties.has(listingId);
 
     // Optimistic UI update
-    setSavedProperties(prev => {
+    setSavedProperties((prev) => {
       const next = new Set(prev);
       if (isSaved) next.delete(listingId);
       else next.add(listingId);
@@ -159,7 +188,7 @@ const Properties = () => {
       console.error("Failed to toggle saved listing", err);
 
       // revert optimistic update
-      setSavedProperties(prev => {
+      setSavedProperties((prev) => {
         const next = new Set(prev);
         if (isSaved) next.add(listingId);
         else next.delete(listingId);
@@ -168,7 +197,6 @@ const Properties = () => {
     }
   };
 
-
   const handleMessageOwner = (ownerId: string) => {
     if (!currentUserId) {
       navigate("/auth");
@@ -176,6 +204,96 @@ const Properties = () => {
     }
     setMessagePeerId(ownerId);
     setMessagesOpen(true);
+  };
+
+  // open agreement modal for a specific listing
+  const handleStartAgreement = (property: Property) => {
+    if (!currentUserId) {
+      navigate("/auth");
+      return;
+    }
+    // don’t allow owners to make agreements with themselves
+    if (property.ownerId && property.ownerId === currentUserId) {
+      alert("You are the owner for this listing.");
+      return;
+    }
+
+    setAgreementListing(property);
+    setAgreementForm({
+      startDate: "",
+      endDate: "",
+      rent: property.price ? String(property.price) : "",
+      securityDeposit: property.securityDeposit
+        ? String(property.securityDeposit)
+        : "",
+      numPeople: property.roommates ? String(property.roommates) : "1",
+      payTerm: "monthly",
+    });
+    setAgreementOpen(true);
+  };
+
+  const handleCreateAgreement = async () => {
+    if (!currentUserId || !agreementListing) return;
+
+    const listingId = agreementListing.id;
+    const ownerId = agreementListing.ownerId;
+    if (!ownerId) {
+      alert("Listing owner is missing.");
+      return;
+    }
+
+    if (!agreementForm.startDate || !agreementForm.endDate) {
+      alert("Please provide start and end dates.");
+      return;
+    }
+
+    if (!agreementForm.numPeople) {
+      alert("Please provide number of people.");
+      return;
+    }
+
+    setAgreementSubmitting(true);
+    try {
+      const res = await fetch(
+        `${API_BASE}/listings/${listingId}/makeAgreement`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            startDate: agreementForm.startDate,
+            endDate: agreementForm.endDate,
+            tenant: currentUserId,
+            owner: ownerId,
+            payTerm: agreementForm.payTerm || "monthly",
+            rent: agreementForm.rent
+              ? Number(agreementForm.rent)
+              : agreementListing.price,
+            securityDeposit: agreementForm.securityDeposit
+              ? Number(agreementForm.securityDeposit)
+              : undefined,
+            numPeople: Number(agreementForm.numPeople),
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        console.error("Failed to create agreement", await res.text());
+        alert("Failed to create agreement. Please check your inputs.");
+        return;
+      }
+
+      // we don’t need the response here for now – dashboard will pick it up via GET /agreements
+      await res.json();
+
+      alert("Agreement created! It will appear in your dashboard as unsigned.");
+      setAgreementOpen(false);
+      setAgreementListing(null);
+    } catch (err) {
+      console.error("Error creating agreement", err);
+      alert("An error occurred while creating the agreement.");
+    } finally {
+      setAgreementSubmitting(false);
+    }
   };
 
   const filteredProperties = useMemo(
@@ -201,7 +319,6 @@ const Properties = () => {
               <span className="text-primary">Properties</span>
             </h1>
           </div>
-          {/* Saved properties moved here in previous step – keep as-is */}
           <div className="text-right text-sm text-muted-foreground">
             <div className="font-semibold mb-1">Saved Properties</div>
             {savedProperties.size === 0 ? (
@@ -251,6 +368,13 @@ const Properties = () => {
                 onSave={handleSaveProperty}
                 ownerId={property.ownerId}
                 onMessage={handleMessageOwner}
+                // new props:
+                canMakeAgreement={
+                  !!currentUserId &&
+                  !!property.ownerId &&
+                  property.ownerId !== currentUserId
+                }
+                onMakeAgreement={() => handleStartAgreement(property)}
               />
             ))}
           </div>
@@ -269,8 +393,124 @@ const Properties = () => {
           onOpenChange={setMessagesOpen}
           currentUserId={currentUserId}
           initialPeerId={messagePeerId}
+          // no agreement button in the messages modal anymore
         />
       )}
+
+      {/* Agreement creation modal */}
+      <Dialog open={agreementOpen} onOpenChange={setAgreementOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create Lease Agreement</DialogTitle>
+            <DialogDescription>
+              {agreementListing
+                ? `You’re creating an agreement for: ${agreementListing.title}`
+                : "Select a property first."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {agreementListing && (
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Start Date</Label>
+                  <Input
+                    type="date"
+                    value={agreementForm.startDate}
+                    onChange={(e) =>
+                      setAgreementForm((f) => ({
+                        ...f,
+                        startDate: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>End Date</Label>
+                  <Input
+                    type="date"
+                    value={agreementForm.endDate}
+                    onChange={(e) =>
+                      setAgreementForm((f) => ({
+                        ...f,
+                        endDate: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Rent (per month)</Label>
+                  <Input
+                    type="number"
+                    value={agreementForm.rent}
+                    onChange={(e) =>
+                      setAgreementForm((f) => ({ ...f, rent: e.target.value }))
+                    }
+                    placeholder={String(agreementListing.price ?? "")}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Security Deposit</Label>
+                  <Input
+                    type="number"
+                    value={agreementForm.securityDeposit}
+                    onChange={(e) =>
+                      setAgreementForm((f) => ({
+                        ...f,
+                        securityDeposit: e.target.value,
+                      }))
+                    }
+                    placeholder={
+                      agreementListing.securityDeposit
+                        ? String(agreementListing.securityDeposit)
+                        : "500"
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Number of People</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={agreementForm.numPeople}
+                    onChange={(e) =>
+                      setAgreementForm((f) => ({
+                        ...f,
+                        numPeople: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Pay Term</Label>
+                <Input
+                  value={agreementForm.payTerm}
+                  onChange={(e) =>
+                    setAgreementForm((f) => ({
+                      ...f,
+                      payTerm: e.target.value,
+                    }))
+                  }
+                  placeholder="monthly"
+                />
+              </div>
+
+              <Button
+                className="w-full mt-4"
+                onClick={handleCreateAgreement}
+                disabled={agreementSubmitting}
+              >
+                {agreementSubmitting ? "Creating..." : "Create Agreement"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
