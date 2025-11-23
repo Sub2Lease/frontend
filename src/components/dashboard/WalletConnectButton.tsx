@@ -1,4 +1,3 @@
-// src/components/dashboard/WalletConnectButton.tsx
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 const WalletConnectButton = () => {

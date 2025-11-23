@@ -1,4 +1,5 @@
 // src/components/dashboard/ProfileCard.tsx
+
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -15,19 +16,20 @@ interface Props {
   loading: boolean;
   onRefresh: () => void;
   onInbox: () => void;
+  onLogout: () => void;
 }
 
-const ProfileCard = ({ user, loading, onRefresh, onInbox }: Props) => {
+const ProfileCard = ({ user, loading, onRefresh, onInbox, onLogout }: Props) => {
   if (loading) {
     return (
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-20 animate-pulse rounded-md bg-muted" />
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-20 animate-pulse rounded-md bg-muted" />
+        </CardContent>
+      </Card>
     );
   }
 
@@ -56,38 +58,49 @@ const ProfileCard = ({ user, loading, onRefresh, onInbox }: Props) => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <CardTitle>Profile</CardTitle>
-          {/* <RefreshCcw className="cursor-pointer" onClick={onRefresh} /> */}
-        </div>
+        <CardTitle>Profile</CardTitle>
       </CardHeader>
 
-      <CardContent className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col items-center gap-2">
-            <Avatar className="w-20 h-20">
-              {user.avatarUrl && <AvatarImage src={user.avatarUrl} />}
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
-            <ImageUpload id={user.id} to="USER" callback={onRefresh} />
-          </div>
+      <CardContent className="flex flex-col items-center gap-6 pb-4">
 
-          <div>
-            <h3 className="font-semibold text-lg">{user.name}</h3>
-            <p className="text-sm text-muted-foreground">{user.email}</p>
+        {/* Avatar + Upload */}
+        <div className="flex flex-col items-center gap-3">
+          <Avatar className="w-20 h-20">
+            {user.avatarUrl && <AvatarImage src={user.avatarUrl} />}
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={onInbox}
-            >
-              Open Inbox
-            </Button>
-          </div>
+          <ImageUpload id={user.id} to="USER" callback={onRefresh} />
         </div>
 
-        <WalletConnectButton />
+        {/* Name + Email + Inbox */}
+        <div className="flex flex-col items-center text-center gap-2">
+          <h3 className="font-semibold text-lg">{user.name}</h3>
+          <p className="text-sm text-muted-foreground">{user.email}</p>
+
+          {/* <Button
+            variant="outline"
+            size="sm"
+            className="mt-1 w-full"
+            onClick={onInbox}
+          >
+            Open Inbox
+          </Button> */}
+        </div>
+
+        {/* Wallet Connect */}
+        <div className="w-full flex justify-center">
+          <WalletConnectButton />
+        </div>
+
+        {/* Logout */}
+        <Button
+          className="w-full mt-2"
+          variant="destructive"
+          onClick={onLogout}
+        >
+          Logout
+        </Button>
       </CardContent>
     </Card>
   );

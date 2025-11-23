@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
+import ProfileCard from "@/components/dashboard/ProfileCard";
+import { MessagesModal } from "@/components/MessagesModal";
 
-import { LOCAL_STORAGE_USER_KEY } from "../constants";
+import { LOCAL_STORAGE_USER_KEY, IMAGE_URL } from "../constants";
 
 // helper to read the user from localStorage
 function getCurrentUser() {
@@ -18,9 +20,15 @@ function getCurrentUser() {
 
 const Navigation = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(() => getCurrentUser());
 
-  // listen for login / logout from anywhere in the app
+  const [user, setUser] = useState<any>(() => getCurrentUser());
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  // reload user when auth changes
   useEffect(() => {
     const handleAuthChange = () => {
       setUser(getCurrentUser());
@@ -35,13 +43,27 @@ const Navigation = () => {
     };
   }, []);
 
-  const handleLoginClick = () => {
-    navigate("/auth");
-  };
+  // click-outside auto-close
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
+
+  const handleLoginClick = () => navigate("/auth");
 
   const handleLogoutClick = () => {
-    localStorage.removeItem("sub2lease_user");
+    localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
     window.dispatchEvent(new Event("sub2lease:auth-changed"));
+    setMenuOpen(false);
     navigate("/auth", { replace: true });
   };
 
@@ -51,6 +73,7 @@ const Navigation = () => {
   return (
     <nav className="fixed top-0 inset-x-0 z-50 border-b border-border bg-background/80 backdrop-blur">
       <div className="container mx-auto flex h-16 items-center justify-between px-6">
+
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <span className="text-2xl font-bold">
@@ -61,45 +84,19 @@ const Navigation = () => {
 
         {/* Center links */}
         <div className="flex items-center gap-6">
-          <NavLink
-            to="/"
-            className={linkBase}
-            activeClassName="text-primary"
-          >
-            Home
-          </NavLink>
-
-          <NavLink
-            to="/properties"
-            className={linkBase}
-            activeClassName="text-primary"
-          >
-            Properties
-          </NavLink>
+          <NavLink to="/" className={linkBase} activeClassName="text-primary">Home</NavLink>
+          <NavLink to="/properties" className={linkBase} activeClassName="text-primary">Properties</NavLink>
 
           {user && (
-            <NavLink
-              to="/dashboard"
-              className={linkBase}
-              activeClassName="text-primary"
-            >
+            <NavLink to="/dashboard" className={linkBase} activeClassName="text-primary">
               Dashboard
             </NavLink>
           )}
         </div>
 
-        {/* Right-side auth button */}
-        <div>
-          {user ? (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleLogoutClick}
-              className="px-4"
-            >
-              Logout
-            </Button>
-          ) : (
+        {/* Right: login OR profile dropdown */}
+        <div className="flex items-center gap-4 relative" ref={menuRef}>
+          {!user && (
             <Button
               size="sm"
               onClick={handleLoginClick}
@@ -108,8 +105,50 @@ const Navigation = () => {
               Login
             </Button>
           )}
+
+          {user && (
+            <>
+              <button
+                onClick={() => setMenuOpen((prev) => !prev)}
+                className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold hover:bg-primary/30 transition"
+              >
+                {user.name?.[0]?.toUpperCase() || "U"}
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-14 z-50 w-80">
+                  <ProfileCard
+                    user={{
+                      id: user._id,
+                      name: user.name,
+                      email: user.email,
+                      avatarUrl: user.profileImage ? IMAGE_URL(user.profileImage) : null,
+                    }}
+                    loading={loadingProfile}
+                    onRefresh={() => setUser(getCurrentUser())}
+                    onInbox={() => {
+                      setInboxOpen(true);
+                      setMenuOpen(false);
+                    }}
+                    onLogout={handleLogoutClick}
+                  />
+
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
+
+      {/* Inbox modal */}
+      {user && (
+        <MessagesModal
+          open={inboxOpen}
+          onOpenChange={setInboxOpen}
+          currentUserId={user._id}
+          initialPeerId={undefined}
+        />
+      )}
     </nav>
   );
 };
