@@ -3,23 +3,35 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import InteractiveMap from "@/components/InteractiveMap";
 
-// main page with map and two buttons for login and properties
+// main page with map and two buttons for login/properties (or logout/properties)
 
 const Landing = () => {
   const navigate = useNavigate();
+
+  // track if user is logged in (based on localStorage, like Navigation)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // background map offset (in px)
   const [mapOffset, setMapOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem("sub2lease_user");
+      setIsLoggedIn(!!raw);
+    } catch {
+      setIsLoggedIn(false);
+    }
+  }, []);
+
+  useEffect(() => {
     // how far the map is allowed to move
-    const MAX_X = 50*2; // px left/right
-    const MAX_Y = 50*2; // px up/down
+    const MAX_X = 50 * 2; // px left/right
+    const MAX_Y = 50 * 2; // px up/down
 
     let x = 0;
     let y = 0;
-    let dx = 0.30*2; // speed in px per frame
-    let dy = 0.10*2;
+    let dx = 0.3 * 3; // speed in px per frame
+    let dy = 0.1 * 4;
 
     const id = window.setInterval(() => {
       x += dx;
@@ -40,6 +52,20 @@ const Landing = () => {
 
     return () => window.clearInterval(id);
   }, []);
+
+  const handlePrimaryClick = () => {
+    if (isLoggedIn) {
+      // mirror navbar logout behavior
+      try {
+        localStorage.removeItem("sub2lease_user");
+      } catch {
+        // ignore
+      }
+      navigate("/auth", { replace: true });
+    } else {
+      navigate("/auth");
+    }
+  };
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -81,7 +107,7 @@ const Landing = () => {
           <div className="flex items-center justify-center gap-5 pt-4">
             <Button
               size="lg"
-              onClick={() => navigate("/auth")}
+              onClick={handlePrimaryClick}
               className="
                 text-base md:text-lg
                 px-9 md:px-10 
@@ -92,10 +118,10 @@ const Landing = () => {
                 transition-all
               "
             >
-              Log In / Sign Up
+              {isLoggedIn ? "Logout" : "Log In / Sign Up"}
             </Button>
 
-          <Button
+            <Button
               size="lg"
               variant="outline"
               onClick={() => navigate("/properties")}

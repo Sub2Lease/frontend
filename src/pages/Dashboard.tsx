@@ -506,97 +506,118 @@ const Dashboard = () => {
 
         {/* 2x2 layout: Profile / Smart Payments on top, Posted Leases / Current Sublease below */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Profile */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {loadingProfile ? (
-                <div className="h-20 animate-pulse rounded-md bg-muted" />
-              ) : userProfile ? (
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="w-20 h-20">
-                      {userProfile.avatarUrl && <AvatarImage src={userProfile.avatarUrl} />}
-                      <AvatarFallback>{initials}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="font-semibold text-lg">{userProfile.name}</h3>
-                      <p className="text-sm text-muted-foreground">{userProfile.email}</p>
-                    </div>
-                  </div>
-
-                  {/* Right: Wallet Connect */}
+                  {/* Profile */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loadingProfile ? (
+              <div className="h-20 animate-pulse rounded-md bg-muted" />
+            ) : userProfile ? (
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <Avatar className="w-20 h-20">
+                    {userProfile.avatarUrl && (
+                      <AvatarImage src={userProfile.avatarUrl} />
+                    )}
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  </Avatar>
                   <div>
-                    <ConnectButton.Custom>
-                      {({
-                        account,
-                        chain,
-                        openAccountModal,
-                        openConnectModal,
-                        mounted,
-                      }) => {
-                        const ready = mounted;
-                        const connected = ready && account && chain;
-
-                        return (
-                          <div
-                            {...(!ready && {
-                              "aria-hidden": true,
-                              style: { opacity: 0, pointerEvents: "none", userSelect: "none" },
-                            })}
-                          >
-                            {!connected ? (
-                              <button
-                                onClick={openConnectModal}
-                                className="
-                                  px-4 py-2 rounded-xl 
-                                  bg-[#2a2a2a] text-white 
-                                  border border-white/10 
-                                  shadow-sm
-                                  hover:bg-red-600 hover:border-red-600
-                                  transition-all
-                                "
-                              >
-                                Connect Wallet
-                              </button>
-                            ) : (
-                              <button
-                                onClick={openAccountModal}
-                                className="
-                                  px-4 py-2 rounded-xl 
-                                  bg-[#2a2a2a] text-white 
-                                  border border-white/10 
-                                  shadow-sm
-                                  hover:bg-red-600 hover:border-red-600
-                                  transition-all
-                                "
-                              >
-                                {account.displayName}
-                              </button>
-                            )}
-                          </div>
-                        );
-                      }}
-                    </ConnectButton.Custom>
+                    <h3 className="font-semibold text-lg">
+                      {userProfile.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {userProfile.email}
+                    </p>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    You are not logged in.
-                  </p>
+
+                {/* Right side: wallet + inbox */}
+                <div className="flex flex-col items-end gap-2">
+                  <ConnectButton.Custom>
+                    {({
+                      account,
+                      chain,
+                      openAccountModal,
+                      openConnectModal,
+                      mounted,
+                    }) => {
+                      const ready = mounted;
+                      const connected = ready && account && chain;
+
+                      return (
+                        <div
+                          {...(!ready && {
+                            "aria-hidden": true,
+                            style: {
+                              opacity: 0,
+                              pointerEvents: "none",
+                              userSelect: "none",
+                            },
+                          })}
+                        >
+                          {!connected ? (
+                            <button
+                              onClick={openConnectModal}
+                              className="
+                                px-4 py-2 rounded-xl 
+                                bg-[#2a2a2a] text-white 
+                                border border-white/10 
+                                shadow-sm
+                                hover:bg-red-600 hover:border-red-600
+                                transition-all
+                              "
+                            >
+                              Connect Wallet
+                            </button>
+                          ) : (
+                            <button
+                              onClick={openAccountModal}
+                              className="
+                                px-4 py-2 rounded-xl 
+                                bg-[#2a2a2a] text-white 
+                                border border-white/10 
+                                shadow-sm
+                                hover:bg-red-600 hover:border-red-600
+                                transition-all
+                              "
+                            >
+                              {account.displayName}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    }}
+                  </ConnectButton.Custom>
+
+                  {/* Inbox button – opens shared MessagesModal */}
                   <Button
-                    className="w-full"
-                    onClick={() => navigate("/auth")}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setInboxPeerId(undefined); // show all conversations
+                      setInboxOpen(true);
+                    }}
+                    className="mt-1"
                   >
-                    Log In / Sign Up
+                    Open Inbox
                   </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  You are not logged in.
+                </p>
+                <Button className="w-full" onClick={() => navigate("/auth")}>
+                  Log In / Sign Up
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
 
           {/* Smart Payments */}
           <Card>

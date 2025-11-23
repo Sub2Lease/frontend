@@ -42,7 +42,7 @@ const InteractiveMap = () => {
     <div className="relative w-full h-full rounded-lg overflow-hidden border border-border">
       <MapContainer
         center={center}
-        zoom={14}
+        zoom={16}
         scrollWheelZoom={true}
         className="w-full h-full"
       >
