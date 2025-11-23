@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MessagesModal } from "@/components/MessagesModal";
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 const API_BASE = "https://sub2leasebackend.onrender.com";
 
@@ -183,6 +184,7 @@ const Dashboard = () => {
                 title,
                 price,
                 status: "Active",
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 views: (listing as any).views ?? 0,
               };
             })
@@ -513,34 +515,73 @@ const Dashboard = () => {
               {loadingProfile ? (
                 <div className="h-20 animate-pulse rounded-md bg-muted" />
               ) : userProfile ? (
-                <>
+                <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <Avatar className="w-20 h-20">
-                      {userProfile.avatarUrl && (
-                        <AvatarImage src={userProfile.avatarUrl} />
-                      )}
+                      {userProfile.avatarUrl && <AvatarImage src={userProfile.avatarUrl} />}
                       <AvatarFallback>{initials}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <h3 className="font-semibold text-lg">
-                        {userProfile.name}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {userProfile.email}
-                      </p>
+                      <h3 className="font-semibold text-lg">{userProfile.name}</h3>
+                      <p className="text-sm text-muted-foreground">{userProfile.email}</p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      setInboxPeerId(undefined);
-                      setInboxOpen(true);
-                    }}
-                  >
-                    Open Inbox
-                  </Button>
-                </>
+
+                  {/* Right: Wallet Connect */}
+                  <div>
+                    <ConnectButton.Custom>
+                      {({
+                        account,
+                        chain,
+                        openAccountModal,
+                        openConnectModal,
+                        mounted,
+                      }) => {
+                        const ready = mounted;
+                        const connected = ready && account && chain;
+
+                        return (
+                          <div
+                            {...(!ready && {
+                              "aria-hidden": true,
+                              style: { opacity: 0, pointerEvents: "none", userSelect: "none" },
+                            })}
+                          >
+                            {!connected ? (
+                              <button
+                                onClick={openConnectModal}
+                                className="
+                                  px-4 py-2 rounded-xl 
+                                  bg-[#2a2a2a] text-white 
+                                  border border-white/10 
+                                  shadow-sm
+                                  hover:bg-red-600 hover:border-red-600
+                                  transition-all
+                                "
+                              >
+                                Connect Wallet
+                              </button>
+                            ) : (
+                              <button
+                                onClick={openAccountModal}
+                                className="
+                                  px-4 py-2 rounded-xl 
+                                  bg-[#2a2a2a] text-white 
+                                  border border-white/10 
+                                  shadow-sm
+                                  hover:bg-red-600 hover:border-red-600
+                                  transition-all
+                                "
+                              >
+                                {account.displayName}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      }}
+                    </ConnectButton.Custom>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
