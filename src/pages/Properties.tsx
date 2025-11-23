@@ -61,6 +61,7 @@ const Properties = () => {
 
   const currentUser = getCurrentUser();
   const currentUserId: string | null = currentUser?._id ?? null;
+  console.log(currentUserId);
 
   // Load listings from backend
   useEffect(() => {
@@ -97,15 +98,76 @@ const Properties = () => {
     fetchListings();
   }, []);
 
-  const handleSaveProperty = (id: string | number) => {
-    const key = String(id);
-    setSavedProperties((prev) => {
+  useEffect(() => {
+  const loadSaved = async () => {
+    if (!currentUserId) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/listings/saved/${currentUserId}`);
+      if (!res.ok) {
+        console.error("Failed to load saved listings");
+        return;
+      }
+
+      const savedListings = await res.json(); // array of listing objects
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const savedIds = savedListings.map((l: any) => String(l._id));
+      setSavedProperties(new Set(savedIds));
+    } catch (err) {
+      console.error("Error loading saved listings", err);
+    }
+  };
+
+  loadSaved();
+}, [currentUserId]);
+
+
+  const handleSaveProperty = async (id: string | number) => {
+    if (!currentUserId) {
+      navigate("/auth");
+      return;
+    }
+
+    const listingId = String(id);
+    const isSaved = savedProperties.has(listingId);
+
+    // Optimistic UI update
+    setSavedProperties(prev => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      if (isSaved) next.delete(listingId);
+      else next.add(listingId);
       return next;
     });
+
+    try {
+      if (!isSaved) {
+        // SAVE (POST)
+        await fetch(`${API_BASE}/listings/${listingId}/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: currentUserId }),
+        });
+      } else {
+        // UNSAVE (DELETE)
+        await fetch(`${API_BASE}/listings/${listingId}/save`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: currentUserId }),
+        });
+      }
+    } catch (err) {
+      console.error("Failed to toggle saved listing", err);
+
+      // revert optimistic update
+      setSavedProperties(prev => {
+        const next = new Set(prev);
+        if (isSaved) next.add(listingId);
+        else next.delete(listingId);
+        return next;
+      });
+    }
   };
+
 
   const handleMessageOwner = (ownerId: string) => {
     if (!currentUserId) {
