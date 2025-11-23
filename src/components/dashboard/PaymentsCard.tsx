@@ -1,6 +1,5 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { formatEther } from "viem";
 import type { LeaseStruct, PaymentItem } from "@/hooks/useLeasePayments";
 
 interface Props {
@@ -46,13 +45,14 @@ const PaymentsCard = ({
     );
   }
 
+  // Deposit needed
   const leasesNeedingDeposit = leases.filter(
     (l) => l.depositHeld === 0n && l.securityDeposit > 0n
   );
 
   if (leasesNeedingDeposit.length > 0) {
     const lease = leasesNeedingDeposit[0];
-    const depositEth = formatEther(lease.securityDeposit);
+    const depositWei = lease.securityDeposit.toString();
 
     return (
       <Card>
@@ -65,13 +65,13 @@ const PaymentsCard = ({
           </p>
 
           <p className="mb-2 text-sm text-muted-foreground">
-            Security Deposit: {depositEth} ETH
+            Security Deposit: {depositWei} WEI
           </p>
 
           <Button
             className="w-full"
             onClick={() =>
-              onPayDeposit?.(Number(lease.leaseId), depositEth)
+              onPayDeposit?.(Number(lease.leaseId), depositWei)
             }
           >
             Pay Security Deposit
@@ -81,13 +81,14 @@ const PaymentsCard = ({
     );
   }
 
+  // Rent needed
   const leasesNeedingRent = leases.filter(
     (l) => l.depositHeld === l.securityDeposit && l.paymentTimestamps.length === 0
   );
 
   if (leasesNeedingRent.length > 0) {
     const lease = leasesNeedingRent[0];
-    const rentEth = formatEther(lease.monthlyRent);
+    const rentWei = lease.monthlyRent.toString();
 
     return (
       <Card>
@@ -100,12 +101,12 @@ const PaymentsCard = ({
           </p>
 
           <p className="mb-2 text-sm text-muted-foreground">
-            Monthly Rent: {rentEth} ETH
+            Monthly Rent: {rentWei} WEI
           </p>
 
           <Button
             className="w-full"
-            onClick={() => onPayRent?.(Number(lease.leaseId), rentEth)}
+            onClick={() => onPayRent?.(Number(lease.leaseId), rentWei)}
           >
             Pay Rent
           </Button>
@@ -114,6 +115,7 @@ const PaymentsCard = ({
     );
   }
 
+  // Show payment history
   return (
     <Card>
       <CardHeader>
@@ -123,7 +125,7 @@ const PaymentsCard = ({
         {payments.map((p) => (
           <div key={p.id} className="p-3 border rounded-lg mb-2">
             <div className="flex justify-between">
-              <span>{p.amount} ETH</span>
+              <span>{p.amount} WEI</span>
               <span>{p.status}</span>
             </div>
             <div className="text-xs text-muted-foreground">
