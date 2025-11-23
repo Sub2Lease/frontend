@@ -166,15 +166,16 @@ const Dashboard = () => {
         console.log(listings);
 
         // Load agreements (owner + tenant)
-        const [ownerRes, tenantRes] = await Promise.all([
+        const [ownerRes, tenantRes] = await Promise.allSettled([
           fetch(`${API_BASE}/agreements?ownerId=${userProfile.id}`),
           fetch(`${API_BASE}/agreements?tenantId=${userProfile.id}`),
         ]);
 
-        const all = [
-          ...(ownerRes.ok ? await ownerRes.json() : []),
-          ...(tenantRes.ok ? await tenantRes.json() : []),
-        ];
+        console.log(ownerRes, tenantRes);
+
+        const all = [];
+        if (ownerRes.status === "fulfilled") all.push(...(await ownerRes.value.json()));
+        if (tenantRes.status === "fulfilled") all.push(...(await tenantRes.value.json()));
 
         const unique = Array.from(
           new Map(all.map((a) => [String(a._id), a])).values()
