@@ -35,7 +35,7 @@ const WalletConnectButton = () => {
                 "
               >
                 {account.displayName}
-              </button>
+                        </button>
             )}
           </div>
         );

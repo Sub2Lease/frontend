@@ -1,6 +1,6 @@
 import { useAccount } from "wagmi";
 import { useEffect } from "react";
-import { LOCAL_STORAGE_USER_KEY } from "@/constants";
+import { LOCAL_STORAGE_USER_KEY, API_BASE } from "@/constants";
 
 export const useSyncWallet = () => {
   const { address, isConnected } = useAccount();
@@ -14,7 +14,7 @@ export const useSyncWallet = () => {
 
     const user = JSON.parse(raw);
 
-    fetch(`/users/${user._id}/update`, {
+    fetch(`${API_BASE}/users/${user._id}/update`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ walletAddress: address })

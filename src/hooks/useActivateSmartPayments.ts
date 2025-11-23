@@ -27,7 +27,7 @@ export const useActivateSmartPayments = () => {
     const tenantUser = await fetch(`${API_BASE}/users?userId=${agreement.tenant}`)
   .then((r) => r.json());
 
-    if (!tenantUser.walletAddress) {
+    if (!tenantUser[0].walletAddress) {
       throw new Error("Tenant has no walletAddress stored.");
     }
 
