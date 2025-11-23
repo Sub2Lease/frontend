@@ -30,8 +30,8 @@ const Landing = () => {
 
     let x = 0;
     let y = 0;
-    let dx = 0.3 * 2; // speed in px per frame
-    let dy = 0.1 * 2;
+    let dx = 0.3 * 3; // speed in px per frame
+    let dy = 0.1 * 4;
 
     const id = window.setInterval(() => {
       x += dx;
