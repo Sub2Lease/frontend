@@ -1,27 +1,70 @@
 // src/components/InteractiveMap.tsx
-import { useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
   Marker,
-  Tooltip,
+  Popup,
 } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-// You can later replace this with real coordinates from your listings
-const mockProperties = [
-  { id: 1, lat: 43.0731, lng: -89.4012, title: "Modern Studio" },
-  { id: 2, lat: 43.0765, lng: -89.3998, title: "Cozy 2BR" },
-  { id: 3, lat: 43.0745, lng: -89.4025, title: "Spacious 1BR" },
-];
+const API_BASE = "https://sub2leasebackend.onrender.com";
+
+// Listing interface
+interface ApiListing {
+  _id: string;
+  title: string;
+  address: string;
+  rent?: number;
+  capacity?: number;
+  images?: string[];
+  latitude?: number;
+  longitude?: number;
+}
+
+/* ------------------------ Popup Card Component ------------------------ */
+const MapCard = ({ listing }: { listing: ApiListing }) => {
+  return (
+    <div className="w-60 rounded-xl shadow-lg bg-white text-black overflow-hidden border border-gray-200">
+      {/* Image */}
+      <div className="h-28 w-full overflow-hidden">
+        <img
+          src={listing.images?.[0] || "https://via.placeholder.com/300"}
+          alt={listing.title}
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      {/* Text Section */}
+      <div className="p-3 space-y-1">
+        <div className="font-bold text-lg">
+          ${listing.rent?.toLocaleString() ?? "N/A"}
+        </div>
+
+        <div className="text-sm text-gray-600">
+          {listing.capacity ?? "1"} Bed • {listing.address}
+        </div>
+
+        <div className="font-semibold text-sm">{listing.title}</div>
+      </div>
+    </div>
+  );
+};
+
+/* --------------------------------------------------------------------- */
 
 const InteractiveMap = () => {
-  // Madison center
-  const center = useMemo<LatLngExpression>(() => [43.0731, -89.4012], []);
+  const [listings, setListings] = useState<ApiListing[]>([]);
 
-  // Red glowing pin icon (black/white/red aesthetic)
+  // Default center (Madison)
+  const defaultCenter = useMemo<LatLngExpression>(
+    () => [43.0731, -89.4012],
+    []
+  );
+
+  // Custom glowing red pin icon
   const redPinIcon = useMemo(
     () =>
       L.divIcon({
@@ -38,33 +81,56 @@ const InteractiveMap = () => {
     []
   );
 
+  // Load real listings
+  useEffect(() => {
+    async function loadListings() {
+      try {
+        const res = await fetch(`${API_BASE}/listings`);
+        const data: ApiListing[] = await res.json();
+
+        const valid = data.filter((l) =>
+          typeof l.latitude === "number" && typeof l.longitude === "number"
+        );
+
+        setListings(valid);
+      } catch (err) {
+        console.error("Failed to fetch listings:", err);
+      }
+    }
+
+    loadListings();
+  }, []);
+
   return (
     <div className="relative w-full h-full rounded-lg overflow-hidden border border-border">
       <MapContainer
-        center={center}
-        zoom={16}
+        center={defaultCenter}
+        zoom={15}
         scrollWheelZoom={true}
         className="w-full h-full"
       >
-        {/* Brighter grayscale base map */}
-        <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-        />
+        {/* Light base map */}
+        <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
 
-        {mockProperties.map((p) => (
+        {/* Real markers */}
+        {listings.map((l) => (
           <Marker
-            key={p.id}
-            position={[p.lat, p.lng]}
+            key={l._id}
+            position={[l.latitude!, l.longitude!]}
             icon={redPinIcon}
+            eventHandlers={{
+              mouseover: (e) => e.target.openPopup(),
+              mouseout: (e) => e.target.closePopup(),
+            }}
           >
-            <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
-              <span className="font-semibold text-xs">{p.title}</span>
-            </Tooltip>
+            <Popup closeButton={false} offset={[0, -10]}>
+              <MapCard listing={l} />
+            </Popup>
           </Marker>
         ))}
       </MapContainer>
 
-      {/* very subtle dark overlay, just to blend with UI */}
+      {/* Gradient overlay */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/20" />
     </div>
   );
