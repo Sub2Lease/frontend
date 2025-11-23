@@ -32,7 +32,7 @@ const Auth = () => {
   };
 
   const goToDashboard = () => {
-    navigate("/dashboard", { replace: true });
+    navigate("/", { replace: true });
   };
 
   const handleLogin = async (e: React.FormEvent) => {

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import InteractiveMap from "@/components/InteractiveMap";
+import PostLeaseDialog from "@/components/dashboard/PostLeaseDialog";
 
 import { LOCAL_STORAGE_USER_KEY } from "../constants";
 
@@ -10,19 +11,35 @@ const Landing = () => {
   const navigate = useNavigate();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userProfile, setUserProfile] = useState<unknown>(null);
+
+  // dialog open state
+  const [postDialogOpen, setPostDialogOpen] = useState(false);
+
+  // trigger to reload user profile after posting
+  const [triggerUserLoad, setTriggerUserLoad] = useState(false);
 
   // background map offset (in px)
   const [mapOffset, setMapOffset] = useState({ x: 0, y: 0 });
 
+  // Load user from localStorage
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
-      setIsLoggedIn(!!raw);
+      if (raw) {
+        setIsLoggedIn(true);
+        setUserProfile(JSON.parse(raw));
+      } else {
+        setIsLoggedIn(false);
+        setUserProfile(null);
+      }
     } catch {
       setIsLoggedIn(false);
+      setUserProfile(null);
     }
-  }, []);
+  }, [triggerUserLoad]);
 
+  // floating map animation
   useEffect(() => {
     const MAX_X = 50 * 2;
     const MAX_Y = 50 * 2;
@@ -54,10 +71,8 @@ const Landing = () => {
   const handlePrimaryClick = () => {
     if (isLoggedIn) {
       try {
-        localStorage.removeItem("sub2lease_user");
-      } catch {
-        // ignore
-      }
+        localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
+      } catch { /* empty */ }
       navigate("/auth", { replace: true });
     } else {
       navigate("/auth");
@@ -79,7 +94,7 @@ const Landing = () => {
         </div>
       </div>
 
-      {/* Dark gradient overlay so copy stays readable */}
+      {/* Dark gradient overlay */}
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
 
       {/* Hero content */}
@@ -103,22 +118,49 @@ const Landing = () => {
             The smart way for UW Madison students to sublease.
           </p>
 
+          {/* ACTION BUTTONS */}
           <div className="flex items-center justify-center gap-5 pt-4">
-            <Button
-              size="lg"
-              onClick={handlePrimaryClick}
-              className="
-                text-base md:text-lg
-                px-9 md:px-10 
-                py-5 md:py-6
-                bg-primary hover:bg-primary/90 
-                shadow-[0_0_20px_hsl(var(--primary)/0.3)]
-                hover:shadow-[0_0_26px_hsl(var(--primary)/0.5)]
-                transition-all
-              "
-            >
-              {isLoggedIn ? "Logout" : "Log In / Sign Up"}
-            </Button>
+            {isLoggedIn ? (
+              <PostLeaseDialog
+                open={postDialogOpen}
+                onOpenChange={setPostDialogOpen}
+                ownerId={userProfile?.id}
+                onCreated={() => setTriggerUserLoad((x) => !x)}
+                trigger={
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={() => navigate("/properties")}
+                    className="
+                      text-base md:text-lg
+                      px-9 md:px-10 
+                      py-5 md:py-6
+                      border-primary/60 text-primary 
+                      hover:bg-primary/10 
+                      transition-all
+                    "
+                  >
+                    Post a Sublease
+                  </Button>
+                }
+              />
+            ) : (
+              <Button
+                size="lg"
+                onClick={handlePrimaryClick}
+                className="
+                  text-base md:text-lg
+                  px-9 md:px-10 
+                  py-5 md:py-6
+                  bg-primary hover:bg-primary/90 
+                  shadow-[0_0_20px_hsl(var(--primary)/0.3)]
+                  hover:shadow-[0_0_26px_hsl(var(--primary)/0.5)]
+                  transition-all
+                "
+              >
+                Log In / Sign Up
+              </Button>
+            )}
 
             <Button
               size="lg"
@@ -133,7 +175,7 @@ const Landing = () => {
                 transition-all
               "
             >
-              Find Properties
+              Find Sublease
             </Button>
           </div>
         </div>
