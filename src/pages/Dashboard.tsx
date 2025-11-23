@@ -4,13 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  PlusCircle,
-  MapPin,
-  Heart,
-  FileText,
-  DollarSign,
-} from "lucide-react";
+import { PlusCircle, FileText, DollarSign } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +17,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-import { supabase } from "@/integrations/supabase/client";
+const API_BASE = "http://localhost:3000";
+
+interface ApiUser {
+  _id?: string;
+  email?: string;
+  name?: string;
+  profileImage?: string;
+}
+
+interface ApiListing {
+  _id?: string;
+  // new schema fields
+  title?: string;
+  capacity?: number;
+  // legacy / extra fields we still want to use
+  rent?: number;
+  address?: string;
+  buildingName?: string;
+  peopleCount?: number;
+  images?: string[];
+  description?: string;
+  owner?: string;
+}
+
+interface ApiAgreement {
+  _id?: string;
+  startDate?: string;
+  endDate?: string;
+  rent?: number;
+  payTerm?: string;
+  listing?: string;
+  owner?: string;
+  tenant?: string;
+  propertyTitle?: string;
+}
 
 interface UserProfile {
   id: string;
@@ -33,25 +61,19 @@ interface UserProfile {
 }
 
 interface PostedLease {
-  id: string | number;
+  id: string;
   title: string;
   price: number;
-  status: string; // e.g. "Active", "Pending", "Ended"
+  status: string;
   views?: number;
 }
 
-interface SavedProperty {
-  id: string | number;
-  title: string;
-  price: number;
-  address: string;
-}
-
 interface Payment {
-  id: string | number;
-  date: string; // ISO date
+  id: string;
+  date: string;
+  endDate?: string;
   amount: number;
-  status: string; // e.g. "Completed", "Pending", "Failed"
+  status: string;
   property: string;
 }
 
@@ -63,7 +85,6 @@ const Dashboard = () => {
   const [loadingProfile, setLoadingProfile] = useState(true);
 
   const [postedLeases, setPostedLeases] = useState<PostedLease[]>([]);
-  const [savedProperties, setSavedProperties] = useState<SavedProperty[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<Payment[]>([]);
 
   const [newLease, setNewLease] = useState({
@@ -79,63 +100,144 @@ const Dashboard = () => {
 
   const navigate = useNavigate();
 
-  // Load logged-in user from Supabase
+  // ---------- Load "current user" ----------
   useEffect(() => {
     const loadUser = async () => {
       setLoadingProfile(true);
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setUserProfile(null);
-        setLoadingProfile(false);
-        return;
-      }
-
-      let fullName: string | undefined;
-      let avatarUrl: string | undefined;
-
       try {
-        const { data: profileData } = await supabase
-          .from("profiles") // change if your table is named differently
-          .select("full_name, avatar_url")
-          .eq("id", user.id)
-          .maybeSingle();
+        const raw = localStorage.getItem("sub2lease_user");
+        if (raw) {
+          const u: ApiUser = JSON.parse(raw);
+          if (u && (u._id || u.email)) {
+            const id = (u._id || "").toString();
+            const email = u.email || "";
+            const name =
+              u.name || (email ? email.split("@")[0] : "Sub2Lease User");
+            const avatarUrl = u.profileImage || null;
 
-        if (profileData) {
-          fullName = profileData.full_name ?? undefined;
-          avatarUrl = profileData.avatar_url ?? undefined;
+            setUserProfile({ id, name, email, avatarUrl });
+            return;
+          }
         }
-      } catch {
-        // ignore profile error; we'll fall back to auth data
+
+        // Fallback: use first user from /users so dev still works
+        const res = await fetch(`${API_BASE}/users`);
+        if (!res.ok) {
+          console.error("Failed to load users:", res.status);
+          setUserProfile(null);
+          return;
+        }
+
+        const users: ApiUser[] = await res.json();
+        if (!users || users.length === 0) {
+          setUserProfile(null);
+          return;
+        }
+
+        const u = users[0];
+        const id = (u._id || "").toString();
+        const email = u.email || "";
+        const name =
+          u.name || (email ? email.split("@")[0] : "Sub2Lease User");
+        const avatarUrl = u.profileImage || null;
+
+        setUserProfile({ id, name, email, avatarUrl });
+      } catch (err) {
+        console.error("Failed to load user", err);
+        setUserProfile(null);
+      } finally {
+        setLoadingProfile(false);
       }
-
-      const fallbackName =
-        fullName ||
-        (user.user_metadata &&
-          (user.user_metadata.full_name || user.user_metadata.name)) ||
-        (user.email ? user.email.split("@")[0] : "Sub2Lease User");
-
-      setUserProfile({
-        id: user.id,
-        name: fallbackName,
-        email: user.email ?? "",
-        avatarUrl,
-      });
-
-      setLoadingProfile(false);
     };
 
     loadUser();
   }, []);
 
-  // TODO: later, load postedLeases, savedProperties, paymentHistory from Supabase
-  // useEffect(() => {
-  //   if (!userProfile) return;
-  //   supabase.from("subleases").select("*").eq("owner_id", userProfile.id)...
-  // }, [userProfile]);
+  // ---------- Load dashboard data (listings + agreements) ----------
+  useEffect(() => {
+    if (!userProfile) return;
+
+    const loadDashboard = async () => {
+      try {
+        // 1) My listings (as owner)
+        const myListingsRes = await fetch(
+          `${API_BASE}/listings?ownerId=${encodeURIComponent(userProfile.id)}`
+        );
+        if (myListingsRes.ok) {
+          const data: ApiListing[] = await myListingsRes.json();
+          setPostedLeases(
+            data.map((listing) => {
+              const id = (listing._id || "").toString();
+              const title =
+                listing.title ||
+                listing.buildingName ||
+                listing.address ||
+                "My listing";
+              const price = listing.rent ?? 0;
+
+              return {
+                id,
+                title,
+                price,
+                status: "Active",
+                views: (listing as any).views ?? 0,
+              };
+            })
+          );
+        }
+
+        // 2) Agreements / payments – as owner and as tenant
+        const [asOwnerRes, asTenantRes] = await Promise.all([
+          fetch(
+            `${API_BASE}/agreements?ownerId=${encodeURIComponent(
+              userProfile.id
+            )}`
+          ),
+          fetch(
+            `${API_BASE}/agreements?tenantId=${encodeURIComponent(
+              userProfile.id
+            )}`
+          ),
+        ]);
+
+        const payments: ApiAgreement[] = [];
+
+        if (asOwnerRes.ok) {
+          const arr: ApiAgreement[] = await asOwnerRes.json();
+          payments.push(...arr);
+        }
+        if (asTenantRes.ok) {
+          const arr: ApiAgreement[] = await asTenantRes.json();
+          payments.push(...arr);
+        }
+
+        // Deduplicate by _id
+        const seen = new Map<string, ApiAgreement>();
+        for (const p of payments) {
+          const id = (p._id || "").toString();
+          if (!id) continue;
+          if (!seen.has(id)) seen.set(id, p);
+        }
+
+        const unique = Array.from(seen.values());
+
+        setPaymentHistory(
+          unique.map((p) => ({
+            id: (p._id || "").toString(),
+            date: p.startDate || "",
+            endDate: p.endDate || "",
+            amount: p.rent ?? 0,
+            status: p.payTerm || "Active",
+            property: p.propertyTitle || "",
+          }))
+        );
+      } catch (err) {
+        console.error("Failed to load dashboard data", err);
+      }
+    };
+
+    loadDashboard();
+  }, [userProfile]);
 
   const initials =
     userProfile?.name
@@ -144,6 +246,10 @@ const Dashboard = () => {
       .join("")
       .toUpperCase() || "U";
 
+  // pick "current sublease" as first agreement for now
+  const currentSublease = paymentHistory[0] || null;
+
+  // ---------- Post new listing ----------
   const handleSubmitListing = async () => {
     if (!userProfile) {
       alert("You must be logged in to post a sublease.");
@@ -157,58 +263,81 @@ const Dashboard = () => {
 
     setPostingLoading(true);
 
-    const { data, error } = await supabase
-      .from("subleases") // change table name if needed
-      .insert({
-        title: newLease.title,
-        price: Number(newLease.price),
-        address: newLease.address || null,
-        available_from: newLease.from || null,
-        available_to: newLease.to || null,
-        roommates: newLease.roommates
-          ? Number(newLease.roommates)
-          : null,
-        amenities: newLease.amenities || null,
-        description: newLease.description || null,
-        owner_id: userProfile.id, // make sure this column exists
-      })
-      .select("*")
-      .single();
+    try {
+      const capacityValue = newLease.roommates
+        ? Number(newLease.roommates)
+        : 1;
 
-    setPostingLoading(false);
+      const res = await fetch(`${API_BASE}/listings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          owner: userProfile.id,
+          // schema-required fields
+          title: newLease.title.trim(),
+          capacity: capacityValue,
+          // keep legacy / extra fields populated too
+          buildingName: newLease.title.trim(),
+          peopleCount: capacityValue,
+          address: newLease.address,
+          rent: Number(newLease.price),
+          startDate: newLease.from || null,
+          endDate: newLease.to || null,
+          description: newLease.description || null,
+          amenities: newLease.amenities
+            ? newLease.amenities
+                .split(",")
+                .map((a) => a.trim())
+                .filter(Boolean)
+            : [],
+        }),
+      });
 
-    if (error) {
-      console.error("Error creating sublease:", error);
+      if (!res.ok) {
+        console.error("Create listing failed", await res.text());
+        alert("Failed to create sublease. Please try again.");
+        return;
+      }
+
+      const created: ApiListing = await res.json();
+
+      const id = (created._id || "").toString();
+      const title =
+        created.title ||
+        created.buildingName ||
+        created.address ||
+        newLease.title ||
+        "My listing";
+      const price = created.rent ?? 0;
+
+      setPostedLeases((prev) => [
+        {
+          id,
+          title,
+          price,
+          status: "Active",
+          views: 0,
+        },
+        ...prev,
+      ]);
+
+      setNewLease({
+        title: "",
+        price: "",
+        roommates: "",
+        address: "",
+        from: "",
+        to: "",
+        amenities: "",
+        description: "",
+      });
+      setIsPostingLease(false);
+    } catch (err) {
+      console.error("Error creating listing", err);
       alert("Failed to create sublease. Please try again.");
-      return;
+    } finally {
+      setPostingLoading(false);
     }
-
-    // Update "My Posted Leases" immediately
-    setPostedLeases((prev) => [
-      {
-        id: data.id,
-        title: data.title,
-        price: data.price ?? 0,
-        status: "Active",
-        views: 0,
-      },
-      ...prev,
-    ]);
-
-    // Clear the form
-    setNewLease({
-      title: "",
-      price: "",
-      roommates: "",
-      address: "",
-      from: "",
-      to: "",
-      amenities: "",
-      description: "",
-    });
-
-    // Close the dialog
-    setIsPostingLease(false);
   };
 
   return (
@@ -243,10 +372,7 @@ const Dashboard = () => {
                     placeholder="Modern Studio Near Campus"
                     value={newLease.title}
                     onChange={(e) =>
-                      setNewLease((prev) => ({
-                        ...prev,
-                        title: e.target.value,
-                      }))
+                      setNewLease((prev) => ({ ...prev, title: e.target.value }))
                     }
                   />
                 </div>
@@ -377,9 +503,10 @@ const Dashboard = () => {
           </Dialog>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* User Profile */}
-          <Card className="lg:col-span-1">
+        {/* 2x2 layout: Profile / Smart Payments on top, Posted Leases / Current Sublease below */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Profile */}
+          <Card>
             <CardHeader>
               <CardTitle>Profile</CardTitle>
             </CardHeader>
@@ -428,8 +555,48 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
+          {/* Smart Payments */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-primary" />
+                Smart Contract Payments
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {paymentHistory.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  You have no payment history yet.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {paymentHistory.map((payment) => (
+                    <div
+                      key={payment.id}
+                      className="p-3 border border-border rounded-lg space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">
+                          ${payment.amount}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {payment.status}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {payment.date}
+                      </p>
+                      {/* TODO: show more sublease details here
+                          (property name, role, schedule, etc.) in a nicer card format */}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Posted Leases */}
-          <Card className="lg:col-span-2">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
@@ -469,76 +636,28 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Saved Properties */}
-          <Card className="lg:col-span-2">
+          {/* Current Sublease */}
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Heart className="w-5 h-5 text-primary" />
-                Saved Properties
-              </CardTitle>
+              <CardTitle>Current Sublease</CardTitle>
             </CardHeader>
             <CardContent>
-              {savedProperties.length === 0 ? (
+              {!currentSublease ? (
                 <p className="text-sm text-muted-foreground">
-                  You have not saved any properties yet.
+                  You have no active subleases yet.
                 </p>
               ) : (
-                <div className="space-y-4">
-                  {savedProperties.map((property) => (
-                    <div
-                      key={property.id}
-                      className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-primary/50 transition-colors"
-                    >
-                      <div className="space-y-1">
-                        <h4 className="font-semibold">{property.title}</h4>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <MapPin className="w-4 h-4" />
-                          {property.address}
-                        </div>
-                      </div>
-                      <div className="text-lg font-bold text-primary">
-                        ${property.price}/mo
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Payment History */}
-          <Card className="lg:col-span-1">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-primary" />
-                Smart Contract Payments
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {paymentHistory.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  You have no payment history yet.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {paymentHistory.map((payment) => (
-                    <div
-                      key={payment.id}
-                      className="p-3 border border-border rounded-lg space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">
-                          ${payment.amount}
-                        </span>
-                        <Badge variant="outline" className="text-xs">
-                          {payment.status}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {payment.date}
-                      </p>
-                    </div>
-                  ))}
+                <div className="space-y-2">
+                  <h3 className="font-semibold">
+                    {currentSublease.property || "Sublease"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    ${currentSublease.amount}/mo
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {currentSublease.date} –{" "}
+                    {currentSublease.endDate || "ongoing"}
+                  </p>
                 </div>
               )}
             </CardContent>

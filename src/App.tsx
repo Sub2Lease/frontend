@@ -9,25 +9,28 @@ import Properties from "./pages/Properties";
 import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-import { useAuth } from "./hooks/useAuth";
+// ❌ remove this import – we won't use Supabase-based auth anymore
+// import { useAuth } from "./hooks/useAuth";
 
-// runner class 
+// helper to read the user from localStorage
+function getCurrentUser() {
+  try {
+    const raw = localStorage.getItem("sub2lease_user");
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-  
+  const user = getCurrentUser();
+
+  // if no user in localStorage, bounce to /auth
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
-  
+
   return <>{children}</>;
 };
 

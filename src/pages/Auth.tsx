@@ -1,72 +1,122 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import MapBackground from "@/components/MapBackground";
 
+const API_ORIGIN =
+  import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
+// If your server mounts routes as app.use("/api", router), set VITE_API_PREFIX="/api"
+const API_PREFIX = import.meta.env.VITE_API_PREFIX ?? "";
+const API_BASE = `${API_ORIGIN}${API_PREFIX}`;
 
-// Auth page for logging in/ signing up users 
+// Helper to safely parse JSON, or fall back to raw text
+async function parseMaybeJson(res: Response) {
+  const text = await res.text();
+  try {
+    return { data: text ? JSON.parse(text) : null, raw: text };
+  } catch {
+    return { data: null, raw: text };
+  }
+}
 
+// Auth page for logging in / signing up users
 const Auth = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupFullName, setSignupFullName] = useState("");
 
+  // LOGIN -> POST /login, then store user and go to /dashboard
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password: loginPassword,
+      const res = await fetch(`${API_BASE}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: loginEmail,
+          password: loginPassword,
+        }),
       });
 
-      if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success("Logged in successfully!");
-        navigate("/dashboard");
+      const { data, raw } = await parseMaybeJson(res);
+
+      if (!res.ok) {
+        const msg =
+          (data && (data as any).error) ||
+          raw ||
+          "Invalid email or password";
+        toast.error(msg);
+        console.error("Login failed:", raw);
+        return;
       }
+
+      // Backend returns the user object (without password)
+      localStorage.setItem("sub2lease_user", JSON.stringify(data));
+      toast.success("Logged in successfully!");
+      console.log("✅ Login success, navigating to /dashboard");
+      navigate("/dashboard");
     } catch (error) {
+      console.error("Login error:", error);
       toast.error("An error occurred during login");
     } finally {
       setIsLoading(false);
     }
   };
 
+  // SIGNUP -> POST /signup, then treat returned user as logged in
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email: signupEmail,
-        password: signupPassword,
-        options: {
-          data: {
-            full_name: signupFullName,
-          },
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-        },
+      const res = await fetch(`${API_BASE}/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: signupFullName,
+          email: signupEmail,
+          password: signupPassword,
+        }),
       });
 
-      if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success("Account created! Logging you in...");
-        navigate("/dashboard");
+      const { data, raw } = await parseMaybeJson(res);
+
+      if (!res.ok) {
+        const msg =
+          (data && (data as any).error) ||
+          raw ||
+          "Failed to create account";
+        toast.error(msg);
+        console.error("Signup failed:", raw);
+        return;
       }
+
+      // Your /signup returns the newly created user (including _id)
+      localStorage.setItem("sub2lease_user", JSON.stringify(data));
+      toast.success("Account created! Logged in.");
+      console.log("✅ Signup success, navigating to /dashboard");
+      navigate("/dashboard");
     } catch (error) {
+      console.error("Signup error:", error);
       toast.error("An error occurred during signup");
     } finally {
       setIsLoading(false);
@@ -76,7 +126,7 @@ const Auth = () => {
   return (
     <div className="relative min-h-screen overflow-hidden">
       <MapBackground interactive />
-      
+
       <div className="relative z-10 container mx-auto px-6 pt-32 pb-20 flex items-center justify-center">
         <Card className="w-full max-w-md bg-card/90 backdrop-blur-sm border-border/50 animate-fade-in">
           <CardHeader>
@@ -94,7 +144,7 @@ const Auth = () => {
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
@@ -123,7 +173,7 @@ const Auth = () => {
                   </Button>
                 </form>
               </TabsContent>
-              
+
               <TabsContent value="signup">
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
