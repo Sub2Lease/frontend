@@ -19,7 +19,7 @@ const AppliedLeasesCard = ({ leases }: { leases: Lease[] }) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="w-5 h-5 text-primary" />
-          My Posted Leases
+          My Applied Leases
         </CardTitle>
       </CardHeader>
 
@@ -36,11 +36,13 @@ const AppliedLeasesCard = ({ leases }: { leases: Lease[] }) => {
                 className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-primary/50 transition-colors"
               >
                 <div className="space-y-1">
-                  <h4 className="font-semibold">{lease.title}</h4>
+                  <h4 className="font-semibold">{lease.title || "Lease"}</h4>
                   <p className="text-sm text-muted-foreground">
                     ${lease.price}/mo
                   </p>
                 </div>
+
+
 
                 <div className="flex items-center gap-3">
                   <Badge variant="outline">{lease.status}</Badge>

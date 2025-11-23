@@ -49,7 +49,7 @@ const AgreementsCard = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Current Subleases</CardTitle>
+        <CardTitle>Pending & Completed Leases</CardTitle>
       </CardHeader>
 
       <CardContent>

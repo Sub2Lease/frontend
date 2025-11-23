@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 
 import ProfileCard from "@/components/dashboard/ProfileCard";
 import AppliedLeasesCard from "@/components/dashboard/AppliedLeasesCard";
+import InProgress from "../components/dashboard/InProgress";
 import PostedLeasesCard from "@/components/dashboard/PostedLeasesCard";
 import AgreementsCard from "@/components/dashboard/AgreementsCard";
 import PostLeaseDialog from "@/components/dashboard/PostLeaseDialog";
@@ -38,7 +39,7 @@ interface ApiAgreement {
   endDate?: string;
   rent?: number;
   payTerm?: string;
-  listing?: string;
+  listing?: ApiListing;
   owner?: string;
   tenant?: string;
   propertyTitle?: string;
@@ -136,9 +137,9 @@ const Dashboard = () => {
 
          // Load user's applications
         const appliedRes = await fetch(
-          `${API_BASE}/agreements?tenantId=${encodeURIComponent(userProfile.id)}`
+          `${API_BASE}/agreements?tenantId=${encodeURIComponent(userProfile.id)}&populateListing=t`
         );
-        const appliedListings = appliedRes.ok ? await appliedRes.json() : [];
+        const appliedAgreements = appliedRes.ok ? await appliedRes.json() : [];
 
         setPostedLeases(
           listings.map((l: ApiListing) => ({
@@ -152,9 +153,9 @@ const Dashboard = () => {
         );
 
         setAppliedLeases(
-          appliedListings.map((l: ApiListing) => ({
+          appliedAgreements.map((l: ApiAgreement) => ({
             id: String(l._id),
-            title: l.title || l.address,
+            title: l.listing.title || l.listing.address,
             price: l.rent ?? 0,
             status: "Active",
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -205,6 +206,7 @@ const Dashboard = () => {
 
         {/* 2x2 grid */}
         <div className="flex flex-col gap-4">
+
           <div className="flex justify-center items-end">
             <div className="bg-muted rounded-md w-fit p-2 gap-4 flex">
               <Button
@@ -236,12 +238,18 @@ const Dashboard = () => {
 
           {activeTab === "tenant" && (
             <>
+              <InProgress agreements={agreements} userId={userProfile?.id} tenant={true} />
               <AppliedLeasesCard leases={appliedLeases} />
             </>
           )}
           {activeTab === "owner" && (
-            <PostedLeasesCard leases={postedLeases} />
+            <>
+              <InProgress agreements={agreements} userId={userProfile?.id} tenant={false} />
+              <PostedLeasesCard leases={postedLeases} />
+            </>
           )}
+
+          <AgreementsCard agreements={agreements} userId={userProfile?.id} />
         </div>
       </div>
 
