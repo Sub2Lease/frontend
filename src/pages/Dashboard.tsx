@@ -10,6 +10,7 @@ import AgreementsCard from "@/components/dashboard/AgreementsCard";
 import PostLeaseDialog from "@/components/dashboard/PostLeaseDialog";
 
 import { MessagesModal } from "@/components/MessagesModal";
+import { useLeasePayments } from "@/hooks/useLeasePayments";
 
 import { API_BASE, IMAGE_URL, LOCAL_STORAGE_USER_KEY } from "@/constants";
 
@@ -43,15 +44,6 @@ interface ApiAgreement {
   tenantSigned?: boolean;
 }
 
-interface PaymentShape {
-  id: string;
-  date: string;
-  endDate?: string;
-  amount: number;
-  status: string;
-  property: string;
-}
-
 const Dashboard = () => {
   const [triggerUserLoad, setTriggerUserLoad] = useState(false);
 
@@ -66,7 +58,9 @@ const Dashboard = () => {
 
   const [postedLeases, setPostedLeases] = useState([]);
   const [agreements, setAgreements] = useState<ApiAgreement[]>([]);
-  const [payments, setPayments] = useState<PaymentShape[]>([]);
+
+  // 🔥 NEW Web3 payments
+  const { leases, payments, isLoading: paymentsLoading } = useLeasePayments();
 
   const [postDialogOpen, setPostDialogOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -93,14 +87,14 @@ const Dashboard = () => {
             const avatarUrl = u.profileImage ? IMAGE_URL(u.profileImage) : null;
 
             setUserProfile({ id, name, email, avatarUrl });
-            return setLoadingProfile(false);
+            setLoadingProfile(false);
+            return;
           }
         }
 
         // fallback dev mode
         const res = await fetch(`${API_BASE}/users`);
-        if (!res.ok) throw new Error("Failed to load users");
-        const users: ApiUser[] = await res.json();
+        const users: ApiUser[] = res.ok ? await res.json() : [];
 
         if (users.length > 0) {
           const u = users[0];
@@ -123,7 +117,7 @@ const Dashboard = () => {
   }, [triggerUserLoad]);
 
   // --------------------------
-  // 2. Load listings + agreements + payment history
+  // 2. Load listings + agreements
   // --------------------------
   useEffect(() => {
     if (!userProfile) return;
@@ -135,12 +129,14 @@ const Dashboard = () => {
           `${API_BASE}/listings?ownerId=${encodeURIComponent(userProfile.id)}`
         );
         const listings = listingsRes.ok ? await listingsRes.json() : [];
+
         setPostedLeases(
           listings.map((l: ApiListing) => ({
             id: String(l._id),
             title: l.title || l.address,
             price: l.rent ?? 0,
             status: "Active",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             views: (l as any).views ?? 0,
           }))
         );
@@ -156,39 +152,11 @@ const Dashboard = () => {
           ...(tenantRes.ok ? await tenantRes.json() : []),
         ];
 
-        // Remove duplicates
         const unique = Array.from(
           new Map(all.map((a) => [String(a._id), a])).values()
         );
 
         setAgreements(unique);
-
-        // Payment History view generation
-        setPayments(
-          unique.map((a) => {
-            let status = "Unsigned";
-            const youAreOwner = a.owner === userProfile.id;
-            const youAreTenant = a.tenant === userProfile.id;
-
-            const youSigned = youAreOwner ? a.ownerSigned : a.tenantSigned;
-            const otherSigned = youAreOwner ? a.tenantSigned : a.ownerSigned;
-
-            if (youSigned && otherSigned) status = "Fully signed";
-            else if (youSigned && !otherSigned)
-              status = "You signed – waiting for other party";
-            else if (!youSigned && otherSigned)
-              status = "Pending your signature";
-
-            return {
-              id: String(a._id),
-              date: a.startDate || "",
-              endDate: a.endDate || "",
-              amount: a.rent ?? 0,
-              status,
-              property: a.propertyTitle || "Sublease",
-            };
-          })
-        );
       } catch (err) {
         console.error("Failed to load dashboard:", err);
       }
@@ -221,7 +189,15 @@ const Dashboard = () => {
             onInbox={() => setInboxOpen(true)}
           />
 
-          <PaymentsCard payments={payments} />
+          {/* 🔥 Blockchain Payments */}
+          <PaymentsCard
+            leases={leases}
+            payments={payments}
+            isLoading={paymentsLoading}
+            onPayDeposit={(leaseId, amount) => console.log("Deposit", leaseId, amount)}
+            onPayRent={(leaseId, amount) => console.log("Rent", leaseId, amount)}
+          />
+
 
           <PostedLeasesCard leases={postedLeases} />
 
@@ -229,7 +205,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Inbox modal */}
       {userProfile && (
         <MessagesModal
           open={inboxOpen}
