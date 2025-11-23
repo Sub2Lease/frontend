@@ -238,13 +238,13 @@ const Dashboard = () => {
 
           {activeTab === "tenant" && (
             <>
-              <InProgress agreements={agreements} userId={userProfile?.id} tenant={true} />
+              <InProgress agreements={agreements} userProfile={userProfile} tenant={true} />
               <AppliedLeasesCard leases={appliedLeases} />
             </>
           )}
           {activeTab === "owner" && (
             <>
-              <InProgress agreements={agreements} userId={userProfile?.id} tenant={false} />
+              <InProgress agreements={agreements} userProfile={userProfile} tenant={false} />
               <PostedLeasesCard leases={postedLeases} />
             </>
           )}

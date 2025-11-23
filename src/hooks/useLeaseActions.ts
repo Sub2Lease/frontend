@@ -19,7 +19,7 @@ export const useLeaseActions = () => {
         address: LEASE_CONTRACT,
         functionName: "fundSecurityDeposit",
         args: [BigInt(leaseId)],
-        value: BigInt(amountWei), // <----- FIXED
+        value: BigInt(amountWei),
         account: address,
         chainId,
         chain: undefined
@@ -36,7 +36,7 @@ export const useLeaseActions = () => {
         address: LEASE_CONTRACT,
         functionName: "depositRent",
         args: [BigInt(leaseId)],
-        value: BigInt(amountWei), // <----- FIXED
+        value: BigInt(amountWei),
         account: address,
         chainId,
         chain: undefined

@@ -18,23 +18,41 @@ interface Agreement {
   tenantSigned?: boolean;
 }
 
+interface UserProfile {
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl: string | null;
+}
 const InProgress = ({
-    agreements,
-    userId,
-    tenant,
+  agreements,
+  userProfile,
+  tenant,   // true = viewing tenant tab, false = viewing owner tab
 }: {
   agreements: Agreement[];
-  userId: string;
+  userProfile: UserProfile;
   tenant: boolean;
-    }) => {
-  const signedAgreements = agreements.filter(
+}) => {
+
+  if (!userProfile || !userProfile.id) return null;
+
+  // 1) Only show fully signed agreements
+  let signedAgreements = agreements.filter(
     (a) => a.ownerSigned && a.tenantSigned
   );
-    
-  const [warned, setWarned] = useState(false);
-  if (!userId) return null;
 
-  const date = new Date().toLocaleDateString();
+  // 2) Filter by role depending on active tab
+  if (tenant) {
+    // Tenant tab → only agreements where user is the tenant
+    signedAgreements = signedAgreements.filter(
+      (a) => a.tenant === userProfile.id
+    );
+  } else {
+    // Owner tab → only agreements where user is the owner
+    signedAgreements = signedAgreements.filter(
+      (a) => a.owner === userProfile.id
+    );
+  }
 
   return (
     <Card>
@@ -45,33 +63,45 @@ const InProgress = ({
       <CardContent>
         {signedAgreements.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            You have no lease agreements yet.
+            No active leases found.
           </p>
         ) : (
           <div className="space-y-3">
             {signedAgreements.map((a) => {
               const id = a._id!;
-              const youAreOwner = a.owner === userId;
+              const youAreOwner = a.owner === userProfile.id;
 
               return (
                 <div
-                  key={id}
-                  className="p-3 border border-border rounded-lg space-y-2"
+                key={id}
+                className="p-3 border border-border rounded-lg flex items-center justify-between"
                 >
-                  <div className="flex items-center justify-between">
-                     <div className="font-medium text-sm">
-                        {a.listingTitle}{" "}
-                        <span className="text-xs text-muted-foreground">
-                          ({youAreOwner ? "Owner" : "Tenant"})
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {a.startDate} – {a.endDate}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Rent ${a.rent} • {a.numPeople || 1} people
-                      </div>
-                  </div>
+                {/* LEFT SIDE */}
+                <div className="space-y-1">
+                    <div className="font-medium text-sm">
+                    {a.listingTitle}{" "}
+                    <span className="text-xs text-muted-foreground">
+                        ({youAreOwner ? "Owner" : "Tenant"})
+                    </span>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground">
+                    {a.startDate} – {a.endDate}
+                    </div>
+
+                    <div className="text-xs text-muted-foreground">
+                    Rent ${a.rent} • {a.numPeople || 1} people
+                    </div>
+                </div>
+
+                {/* RIGHT SIDE — ACTIVATE SMART PAYMENTS BUTTON */}
+                <Button
+                    size="sm"
+                    className="ml-4"
+                    onClick={() => {}}
+                >
+                    Activate Smart Payments
+                </Button>
                 </div>
               );
             })}
