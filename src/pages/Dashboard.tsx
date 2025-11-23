@@ -405,35 +405,42 @@ setPaymentHistory(
   };
 
   const handleSignAgreement = async (agreementId: string) => {
-  if (!userProfile) return;
+    if (!userProfile) return;
 
-  try {
-    const res = await fetch(
-      `${API_BASE}/agreements/${agreementId}/sign`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: userProfile.id }),
+    try {
+      const res = await fetch(
+        `${API_BASE}/agreements/${agreementId}/sign`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: userProfile.id }),
+        }
+      );
+
+      if (!res.ok) {
+        console.error("Failed to sign agreement", await res.text());
+        alert("Failed to sign agreement.");
+        return;
       }
-    );
 
-    if (!res.ok) {
-      console.error("Failed to sign agreement", await res.text());
-      alert("Failed to sign agreement");
-      return;
+      const updated: ApiAgreement = await res.json();
+
+      setAgreements((prev) =>
+        prev.map((a) =>
+          (a._id || "").toString() === agreementId
+            ? {
+                ...a,
+                ownerSigned: updated.ownerSigned,
+                tenantSigned: updated.tenantSigned,
+              }
+            : a
+        )
+      );
+    } catch (err) {
+      console.error("Error signing agreement", err);
+      alert("An error occurred while signing the agreement.");
     }
-
-    // re-load agreements so statuses update
-    // simplest: call your `loadDashboard()` again or just re-fetch agreements
-    // If loadDashboard is inside useEffect, you can either:
-    //  - refactor it out so you can call it here, or
-    //  - do a small fetch of agreements and call setPaymentHistory again.
-  } catch (err) {
-    console.error("Error signing agreement", err);
-    alert("Error signing agreement");
-  }
-};
-
+  };
 
   return (
     <div className="min-h-screen pt-20 pb-12">

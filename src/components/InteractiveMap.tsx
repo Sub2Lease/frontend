@@ -1,18 +1,12 @@
 // src/components/InteractiveMap.tsx
 import { useEffect, useState, useMemo } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-} from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
 const API_BASE = "https://sub2leasebackend.onrender.com";
 
-// Listing interface
 interface ApiListing {
   _id: string;
   title: string;
@@ -28,7 +22,6 @@ interface ApiListing {
 const MapCard = ({ listing }: { listing: ApiListing }) => {
   return (
     <div className="w-60 rounded-xl shadow-lg bg-white text-black overflow-hidden border border-gray-200">
-      {/* Image */}
       <div className="h-28 w-full overflow-hidden">
         <img
           src={listing.images?.[0] || "https://via.placeholder.com/300"}
@@ -37,7 +30,6 @@ const MapCard = ({ listing }: { listing: ApiListing }) => {
         />
       </div>
 
-      {/* Text Section */}
       <div className="p-3 space-y-1">
         <div className="font-bold text-lg">
           ${listing.rent?.toLocaleString() ?? "N/A"}
@@ -55,16 +47,19 @@ const MapCard = ({ listing }: { listing: ApiListing }) => {
 
 /* --------------------------------------------------------------------- */
 
-const InteractiveMap = () => {
+type InteractiveMapProps = {
+  /** "card" = bordered card (properties page), "background" = full-bleed (landing) */
+  variant?: "card" | "background";
+};
+
+const InteractiveMap = ({ variant = "card" }: InteractiveMapProps) => {
   const [listings, setListings] = useState<ApiListing[]>([]);
 
-  // Default center (Madison)
   const defaultCenter = useMemo<LatLngExpression>(
     () => [43.0731, -89.4012],
     []
   );
 
-  // Custom glowing red pin icon
   const redPinIcon = useMemo(
     () =>
       L.divIcon({
@@ -81,15 +76,16 @@ const InteractiveMap = () => {
     []
   );
 
-  // Load real listings
   useEffect(() => {
     async function loadListings() {
       try {
+        // use /listings endpoint to get coordinates
         const res = await fetch(`${API_BASE}/listings`);
         const data: ApiListing[] = await res.json();
 
-        const valid = data.filter((l) =>
-          typeof l.latitude === "number" && typeof l.longitude === "number"
+        const valid = data.filter(
+          (l) =>
+            typeof l.latitude === "number" && typeof l.longitude === "number"
         );
 
         setListings(valid);
@@ -101,18 +97,21 @@ const InteractiveMap = () => {
     loadListings();
   }, []);
 
+  const wrapperClass =
+    variant === "background"
+      ? "relative w-full h-full overflow-hidden" // no border / radius for full-screen background
+      : "relative w-full h-full rounded-lg overflow-hidden border border-border";
+
   return (
-    <div className="relative w-full h-full rounded-lg overflow-hidden border border-border">
+    <div className={wrapperClass}>
       <MapContainer
         center={defaultCenter}
         zoom={15}
         scrollWheelZoom={true}
         className="w-full h-full"
       >
-        {/* Light base map */}
         <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
 
-        {/* Real markers */}
         {listings.map((l) => (
           <Marker
             key={l._id}
@@ -130,8 +129,10 @@ const InteractiveMap = () => {
         ))}
       </MapContainer>
 
-      {/* Gradient overlay */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/20" />
+      {/* Only add extra overlay in card mode; landing already has its own gradient */}
+      {variant === "card" && (
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/20" />
+      )}
     </div>
   );
 };

@@ -1,14 +1,12 @@
+// src/pages/Landing.tsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import InteractiveMap from "@/components/InteractiveMap";
 
-// main page with map and two buttons for login/properties (or logout/properties)
-
 const Landing = () => {
   const navigate = useNavigate();
 
-  // track if user is logged in (based on localStorage, like Navigation)
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // background map offset (in px)
@@ -24,20 +22,18 @@ const Landing = () => {
   }, []);
 
   useEffect(() => {
-    // how far the map is allowed to move
-    const MAX_X = 50 * 2; // px left/right
-    const MAX_Y = 50 * 2; // px up/down
+    const MAX_X = 50 * 2;
+    const MAX_Y = 50 * 2;
 
     let x = 0;
     let y = 0;
-    let dx = 0.3 * 3; // speed in px per frame
+    let dx = 0.3 * 3;
     let dy = 0.1 * 4;
 
     const id = window.setInterval(() => {
       x += dx;
       y += dy;
 
-      // bounce in a rectangle
       if (x > MAX_X || x < -MAX_X) {
         dx = -dx;
         x += dx;
@@ -48,14 +44,13 @@ const Landing = () => {
       }
 
       setMapOffset({ x, y });
-    }, 16); // ~60fps
+    }, 16);
 
     return () => window.clearInterval(id);
   }, []);
 
   const handlePrimaryClick = () => {
     if (isLoggedIn) {
-      // mirror navbar logout behavior
       try {
         localStorage.removeItem("sub2lease_user");
       } catch {
@@ -70,14 +65,16 @@ const Landing = () => {
   return (
     <div className="relative min-h-screen overflow-hidden">
       {/* Full-screen animated map background */}
-      <div
-        className="absolute inset-0 -z-20 pointer-events-none"
-        style={{
-          transform: `translate(${mapOffset.x}px, ${mapOffset.y}px) scale(1.12)`,
-          transition: "transform 0.16s linear",
-        }}
-      >
-        <InteractiveMap />
+      <div className="absolute inset-0 -z-20 overflow-hidden">
+        <div
+          className="absolute -inset-12"
+          style={{
+            transform: `translate(${mapOffset.x}px, ${mapOffset.y}px) scale(1.25)`,
+            transition: "transform 0.16s linear",
+          }}
+        >
+          <InteractiveMap variant="background" />
+        </div>
       </div>
 
       {/* Dark gradient overlay so copy stays readable */}
