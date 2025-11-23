@@ -22,6 +22,7 @@ import {
 } from 'wagmi/chains';
 
 import { LOCAL_STORAGE_USER_KEY } from "./constants";
+import { AppWalletSync } from "./components/AppWalletSync";
 
 // helper to read the user from localStorage
 function getCurrentUser() {
@@ -56,6 +57,7 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <RainbowKitProvider>
         <TooltipProvider>
+          <AppWalletSync />
           <Toaster />
           <Sonner />
           <BrowserRouter>
