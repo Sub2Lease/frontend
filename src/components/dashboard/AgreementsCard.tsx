@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { API_BASE } from "@/constants";
+import { useState } from "react";
 
 interface Agreement {
   _id?: string;
@@ -22,11 +23,20 @@ const AgreementsCard = ({
   userId,
 }: {
   agreements: Agreement[];
-  userId: string | undefined;
+  userId: string;
 }) => {
+  const [warned, setWarned] = useState(false);
   if (!userId) return null;
 
+  const date = new Date().toLocaleDateString();
+
   const handleSignAgreement = async (agreementId: string) => {
+    if (!warned) {
+      alert(`By signing this agreement on ${date}, you confirm that you have read and agree to the terms of the lease agreement. If you wish to continue, click CONFIRM`);
+      setWarned(true);
+      return;
+    }
+    
     await fetch(`${API_BASE}/agreements/${agreementId}/sign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -99,7 +109,7 @@ const AgreementsCard = ({
                           variant="outline"
                           onClick={() => handleSignAgreement(id)}
                         >
-                          Sign Agreement
+                          {!warned ? 'Sign Agreement' : 'Confirm Signature'}
                         </Button>
                       )}
                     </div>

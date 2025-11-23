@@ -28,7 +28,7 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
   const [form, setForm] = useState({
     title: "",
     price: "",
-    roommates: "",
+    capacity: "",
     address: "",
     from: "",
     to: "",
@@ -39,9 +39,32 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
   const submit = async () => {
     if (!ownerId) return;
 
+    const startDate = new Date(form.from);
+    const endDate = new Date(form.to);
+
+    if (!form.title || !form.price || !form.address || !form.from || !form.to) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+
+    if (startDate >= endDate) {
+      alert("Available From date must be before Available To date.");
+      return;
+    }
+
+    if (!Number.isInteger(Number(form.capacity)) || Number(form.capacity) <= 0) {
+      alert("Capacity must be a positive integer.");
+      return;
+    }
+
+    if (Number(form.price) <= 0) {
+      alert("Rent must be positive.");
+      return;
+    }
+
     setLoading(true);
 
-    await fetch(`${API_BASE}/listings`, {
+    const res = await fetch(`${API_BASE}/listings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -49,9 +72,9 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
         title: form.title,
         address: form.address,
         rent: Number(form.price),
-        capacity: Number(form.roommates || 1),
-        startDate: form.from,
-        endDate: form.to,
+        capacity: Number(form.capacity || 1),
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
         amenities: form.amenities
           .split(",")
           .map((x) => x.trim())
@@ -61,16 +84,23 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
     });
 
     setLoading(false);
-    setForm({
-      title: "",
-      price: "",
-      roommates: "",
-      address: "",
-      from: "",
-      to: "",
-      amenities: "",
-      description: "",
-    });
+    
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.error || "Failed to create listing");
+      return;
+    } else {
+      setForm({
+        title: "",
+        price: "",
+        capacity: "",
+        address: "",
+        from: "",
+        to: "",
+        amenities: "",
+        description: "",
+      });
+    }
 
     onCreated();
     onOpenChange(false);
@@ -104,7 +134,7 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Price per Month</Label>
+              <Label>Monthly Rent</Label>
               <Input
                 type="number"
                 value={form.price}
@@ -113,19 +143,21 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
             </div>
 
             <div className="space-y-2">
-              <Label>Number of Roommates</Label>
+              <Label>Capacity (1-2 people per bed)</Label>
               <Input
                 type="number"
-                value={form.roommates}
-                onChange={(e) => update("roommates", e.target.value)}
+                min={1}
+                value={form.capacity}
+                onChange={(e) => update("capacity", e.target.value)}
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>Address</Label>
+            <Label>Address (Street Address, City, State ZIP)</Label>
             <Input
               value={form.address}
+              placeholder="123 Main St, Madison, WI 53703"
               onChange={(e) => update("address", e.target.value)}
             />
           </div>
