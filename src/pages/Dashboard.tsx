@@ -11,6 +11,7 @@ import PostLeaseDialog from "@/components/dashboard/PostLeaseDialog";
 
 import { MessagesModal } from "@/components/MessagesModal";
 import { useLeasePayments } from "@/hooks/useLeasePayments";
+import { useLeaseActions } from "@/hooks/useLeaseActions";
 
 import { API_BASE, IMAGE_URL, LOCAL_STORAGE_USER_KEY } from "@/constants";
 
@@ -59,8 +60,8 @@ const Dashboard = () => {
   const [postedLeases, setPostedLeases] = useState([]);
   const [agreements, setAgreements] = useState<ApiAgreement[]>([]);
 
-  // 🔥 NEW Web3 payments
   const { leases, payments, isLoading: paymentsLoading } = useLeasePayments();
+  const { payDeposit, payRent, isPending } = useLeaseActions();
 
   const [postDialogOpen, setPostDialogOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -193,11 +194,10 @@ const Dashboard = () => {
           <PaymentsCard
             leases={leases}
             payments={payments}
-            isLoading={paymentsLoading}
-            onPayDeposit={(leaseId, amount) => console.log("Deposit", leaseId, amount)}
-            onPayRent={(leaseId, amount) => console.log("Rent", leaseId, amount)}
+            isLoading={paymentsLoading || isPending}
+            onPayDeposit={payDeposit}
+            onPayRent={payRent}
           />
-
 
           <PostedLeasesCard leases={postedLeases} />
 

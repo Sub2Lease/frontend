@@ -36,6 +36,7 @@ export const useLeasePayments = () => {
     args: [TEST_TENANT],
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const leases = (Array.isArray(data) ? data : []) as LeaseStruct[];
 
   const payments = useMemo<PaymentItem[]>(() => {

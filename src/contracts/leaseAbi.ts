@@ -1,29 +1,129 @@
+// src/contracts/leaseAbi.ts
 export const leaseAbi = [
   {
+    anonymous: false,
     inputs: [
-      {
-        internalType: "address",
-        name: "tenant",
-        type: "address",
-      },
+      { indexed: true, internalType: "uint256", name: "leaseId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "tennant", type: "address" },
+      { indexed: true, internalType: "address", name: "subletter", type: "address" },
+      { indexed: false, internalType: "uint256", name: "monthlyRent", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "securityDeposit", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "startDate", type: "uint256" },
     ],
-    name: "getLeasesByTennant",
+    name: "LeaseCreated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: true, internalType: "uint256", name: "leaseId", type: "uint256" }],
+    name: "LeaseEdited",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: true, internalType: "uint256", name: "leaseId", type: "uint256" }],
+    name: "LeaseEnded",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "leaseId", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" },
+    ],
+    name: "RentPaid",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "leaseId", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+    ],
+    name: "RentWithdrawn",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "leaseId", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+    ],
+    name: "SecurityDepositFunded",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "leaseId", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+    ],
+    name: "SecurityDepositReturned",
+    type: "event",
+  },
+  { stateMutability: "payable", type: "fallback" },
+  {
+    inputs: [
+      { internalType: "uint256", name: "_leaseId", type: "uint256" },
+      { internalType: "address", name: "_tenant", type: "address" },
+      { internalType: "uint256", name: "_monthlyRent", type: "uint256" },
+      { internalType: "uint256", name: "_securityDeposit", type: "uint256" },
+      { internalType: "uint256", name: "_startDate", type: "uint256" },
+    ],
+    name: "createLease",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "leaseId", type: "uint256" }],
+    name: "depositRent",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "leaseId", type: "uint256" },
+      { internalType: "uint256", name: "_newMonthlyRent", type: "uint256" },
+      { internalType: "uint256", name: "_newSecurityDeposit", type: "uint256" },
+      { internalType: "uint256", name: "_newStartDate", type: "uint256" },
+    ],
+    name: "editLease",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "leaseId", type: "uint256" }],
+    name: "endLease",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "leaseId", type: "uint256" }],
+    name: "fundSecurityDeposit",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "owner", type: "address" }],
+    name: "getLeasesByLandOwner",
     outputs: [
       {
         components: [
           { internalType: "uint256", name: "leaseId", type: "uint256" },
           { internalType: "address", name: "tennant", type: "address" },
           { internalType: "address", name: "subletter", type: "address" },
-
           { internalType: "uint256", name: "startDate", type: "uint256" },
           { internalType: "uint256[]", name: "paymentTimestamps", type: "uint256[]" },
-
           { internalType: "uint256", name: "monthlyRent", type: "uint256" },
           { internalType: "uint256", name: "rentAvailableToWithdraw", type: "uint256" },
-
           { internalType: "uint256", name: "securityDeposit", type: "uint256" },
           { internalType: "uint256", name: "depositHeld", type: "uint256" },
-
           { internalType: "bool", name: "isActive", type: "bool" },
         ],
         internalType: "struct LeaseContract.Lease[]",
@@ -34,6 +134,83 @@ export const leaseAbi = [
     stateMutability: "view",
     type: "function",
   },
-];
+  {
+    inputs: [{ internalType: "address", name: "tenant", type: "address" }],
+    name: "getLeasesByTennant",
+    outputs: [
+      {
+        components: [
+          { internalType: "uint256", name: "leaseId", type: "uint256" },
+          { internalType: "address", name: "tennant", type: "address" },
+          { internalType: "address", name: "subletter", type: "address" },
+          { internalType: "uint256", name: "startDate", type: "uint256" },
+          { internalType: "uint256[]", name: "paymentTimestamps", type: "uint256[]" },
+          { internalType: "uint256", name: "monthlyRent", type: "uint256" },
+          { internalType: "uint256", name: "rentAvailableToWithdraw", type: "uint256" },
+          { internalType: "uint256", name: "securityDeposit", type: "uint256" },
+          { internalType: "uint256", name: "depositHeld", type: "uint256" },
+          { internalType: "bool", name: "isActive", type: "bool" },
+        ],
+        internalType: "struct LeaseContract.Lease[]",
+        name: "",
+        type: "tuple[]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "leaseId", type: "uint256" }],
+    name: "getPaymentTimestamps",
+    outputs: [{ internalType: "uint256[]", name: "", type: "uint256[]" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "leaseId", type: "uint256" }],
+    name: "landOwnerAvailableToWithdraw",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    name: "leases",
+    outputs: [
+      { internalType: "uint256", name: "leaseId", type: "uint256" },
+      { internalType: "address", name: "tennant", type: "address" },
+      { internalType: "address", name: "subletter", type: "address" },
+      { internalType: "uint256", name: "startDate", type: "uint256" },
+      { internalType: "uint256", name: "monthlyRent", type: "uint256" },
+      { internalType: "uint256", name: "rentAvailableToWithdraw", type: "uint256" },
+      { internalType: "uint256", name: "securityDeposit", type: "uint256" },
+      { internalType: "uint256", name: "depositHeld", type: "uint256" },
+      { internalType: "bool", name: "isActive", type: "bool" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "leaseId", type: "uint256" },
+      { internalType: "uint256", name: "amountToReturn", type: "uint256" },
+    ],
+    name: "returnSecurityDeposit",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "leaseId", type: "uint256" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+    ],
+    name: "withdrawRent",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  { stateMutability: "payable", type: "receive" },
+] as const;
 
-export const LEASE_CONTRACT = "0x6D44965c235e11b9D83393D2f5697fa8ca47e477";
+export const LEASE_CONTRACT = "0x6D44965c235e11b9D83393D2f5697fa8ca47e477" as const;
