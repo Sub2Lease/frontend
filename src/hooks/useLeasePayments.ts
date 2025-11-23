@@ -1,4 +1,4 @@
-import { useReadContract } from "wagmi";
+import { useReadContract, useAccount } from "wagmi";
 import { leaseAbi, LEASE_CONTRACT } from "@/contracts/leaseAbi";
 import { useMemo } from "react";
 
@@ -24,15 +24,15 @@ export interface PaymentItem {
   status: string;
 }
 
-const TEST_TENANT = "0xafC65d5831682d1bD4998F1aA798d8e60B9afd00";
-// const TEST_TENANT = "0x954f16fcc97b41330adc085723d869cf823fcf1b";
-
 export const useLeasePayments = () => {
+
+  const address = useAccount().address;
+
   const { data, isLoading, refetch } = useReadContract({
     address: LEASE_CONTRACT,
     abi: leaseAbi,
     functionName: "getLeasesByTennant",
-    args: [TEST_TENANT],
+    args: [address],
   });
 
   // eslint-disable-next-line react-hooks/exhaustive-deps

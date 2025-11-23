@@ -259,7 +259,7 @@ export function MessagesModal({
             <div className="px-4 py-3 border-b border-border text-sm text-muted-foreground">
               Chatting as{" "}
               <span className="font-mono text-foreground">
-                {user.name}
+                {user?.name}
               </span>
             </div>
 

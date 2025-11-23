@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { API_BASE } from "@/constants";
 import { useState } from "react";
+import ActivateSmartPaymentsButton from "./ActivateSmartPaymentsButton";
 
 interface Agreement {
   _id?: string;
@@ -95,13 +96,9 @@ const InProgress = ({
                 </div>
 
                 {/* RIGHT SIDE — ACTIVATE SMART PAYMENTS BUTTON */}
-                <Button
-                    size="sm"
-                    className="ml-4"
-                    onClick={() => {}}
-                >
-                    Activate Smart Payments
-                </Button>
+                {!youAreOwner ? null : (
+                  <ActivateSmartPaymentsButton agreement={a} userProfile={userProfile} />
+                )}
                 </div>
               );
             })}
