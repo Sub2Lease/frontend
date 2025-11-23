@@ -1,6 +1,5 @@
 import { useReadContract } from "wagmi";
 import { leaseAbi, LEASE_CONTRACT } from "@/contracts/leaseAbi";
-import { formatEther } from "viem";
 import { useMemo } from "react";
 
 export interface LeaseStruct {
@@ -45,7 +44,7 @@ export const useLeasePayments = () => {
         id: `${lease.leaseId}-${idx}`,
         leaseId: Number(lease.leaseId),
         date: new Date(Number(ts) * 1000).toLocaleDateString(),
-        amount: formatEther(lease.monthlyRent),
+        amount: lease.monthlyRent.toString(),
         property: `Lease #${lease.leaseId}`,
         status: lease.isActive ? "Lease Active" : "Lease Ended",
       }))
