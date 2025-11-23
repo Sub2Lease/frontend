@@ -206,12 +206,12 @@ const Dashboard = () => {
                 As a Tenant
               </Button>
             </div>
-            {/* <ProfileCard
+            <ProfileCard
               user={userProfile}
               loading={loadingProfile}
               onRefresh={() => setTriggerUserLoad((x) => !x)}
               onInbox={() => setInboxOpen(true)}
-            /> */}
+            />
           </div>
 
           {activeTab === "tenant" && (

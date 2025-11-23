@@ -9,8 +9,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-
+import { useUser } from "@/hooks/useUser";
 import { API_BASE } from "../constants";
+import { ConversationPreview } from "./ConversationPreview";
 
 interface Message {
   _id?: string;
@@ -46,6 +47,10 @@ export function MessagesModal({
   );
   const [draft, setDraft] = useState("");
   const [loadingMessages, setLoadingMessages] = useState(false);
+
+  const { data: user, isLoading: userLoading } = useUser(currentUserId);
+  const { data: peer, isLoading: peerLoading } = useUser(activePeerId);
+  const loading = userLoading || peerLoading;
 
   // chat scroll container
   const chatRef = useRef<HTMLDivElement | null>(null);
@@ -217,7 +222,7 @@ export function MessagesModal({
     }
   };
 
-  return (
+  return loading ? null : (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl h-[75vh] flex flex-col bg-background">
         <DialogHeader className="pb-2">
@@ -236,22 +241,14 @@ export function MessagesModal({
                   No messages yet.
                 </div>
               ) : (
-                conversations.map((c) => (
-                  <button
-                    key={c.peerId}
-                    className={cn(
-                      "w-full text-left px-4 py-3 border-b border-border/40 hover:bg-muted/60 transition-colors",
-                      activePeerId === c.peerId && "bg-primary text-primary-foreground"
-                    )}
-                    onClick={() => setActivePeerId(c.peerId)}
-                  >
-                    <div className="font-medium text-sm truncate">
-                      {c.peerId}
-                    </div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {c.lastMessage}
-                    </div>
-                  </button>
+                conversations.map(({ peerId, lastMessage }) => (
+                  <ConversationPreview
+                    key={peerId}
+                    active={activePeerId === peerId}
+                    peerId={peerId}
+                    lastMessage={lastMessage}
+                    onClick={setActivePeerId}
+                  />
                 ))
               )}
             </div>
@@ -262,7 +259,7 @@ export function MessagesModal({
             <div className="px-4 py-3 border-b border-border text-sm text-muted-foreground">
               Chatting as{" "}
               <span className="font-mono text-foreground">
-                {currentUserId}
+                {user.name}
               </span>
             </div>
 
