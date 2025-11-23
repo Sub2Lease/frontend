@@ -28,13 +28,13 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
   const [form, setForm] = useState({
     title: "",
     price: "",
-    securityDeposit: "",
     capacity: "",
     address: "",
     from: "",
     to: "",
     amenities: "",
     description: "",
+    images: [] as File[],
   });
 
   const submit = async () => {
@@ -43,7 +43,7 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
     const startDate = new Date(form.from);
     const endDate = new Date(form.to);
 
-    if (!form.title || !form.price || !form.securityDeposit || !form.address || !form.from || !form.to) {
+    if (!form.title || !form.price || !form.address || !form.from || !form.to) {
       alert("Please fill in all required fields.");
       return;
     }
@@ -62,34 +62,33 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
       alert("Rent must be positive.");
       return;
     }
-      
-    if (Number(form.securityDeposit) <= 0) {
-      alert("Security deposit must be positive.");
-      return;
-    }
 
     setLoading(true);
 
+    const body = new FormData();
+    form.images.forEach((file) => {
+      body.append("images", file);
+    });
+    body.append("owner", ownerId);
+    body.append("title", form.title);
+    body.append("address", form.address);
+    body.append("rent", form.price);
+    body.append("capacity", form.capacity || "1");
+    body.append("startDate", startDate.toISOString());
+    body.append("endDate", endDate.toISOString());
+    form.amenities.split(',').map(a => a.trim()).forEach((amenity) => {
+      body.append("amenities", amenity);
+    });
+    body.append("description", form.description);
+
     const res = await fetch(`${API_BASE}/listings`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        owner: ownerId,
-        title: form.title,
-        address: form.address,
-        rent: Number(form.price),
-        securityDeposit: Number(form.securityDeposit),
-        capacity: Number(form.capacity || 1),
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        amenities: form.amenities
-          .split(",")
-          .map((x) => x.trim())
-          .filter(Boolean),
-        description: form.description,
-      }),
+      body: body,
     });
 
+    const data = await res.json();
+    const imageIds = data.images;
+    console.log(data);
     setLoading(false);
     
     if (!res.ok) {
@@ -100,13 +99,13 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
       setForm({
         title: "",
         price: "",
-        securityDeposit: "",
         capacity: "",
         address: "",
         from: "",
         to: "",
         amenities: "",
         description: "",
+        images: [] as File[],
       });
     }
 
@@ -114,7 +113,7 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
     onOpenChange(false);
   };
 
-  const update = (field: string, v: string) =>
+  const update = (field: string, v: string | File[]) =>
     setForm((p) => ({ ...p, [field]: v }));
 
   return (
@@ -126,7 +125,7 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Post a New Sublease</DialogTitle>
           <DialogDescription>
@@ -147,15 +146,6 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
                 type="number"
                 value={form.price}
                 onChange={(e) => update("price", e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Security Deposit</Label>
-              <Input
-                type="number"
-                value={form.securityDeposit}
-                onChange={(e) => update("securityDeposit", e.target.value)}
               />
             </div>
 
@@ -183,7 +173,7 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
             <div className="space-y-2">
               <Label>Available From</Label>
               <Input
-                type="month"
+                type="date"
                 value={form.from}
                 onChange={(e) => update("from", e.target.value)}
               />
@@ -192,7 +182,7 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
             <div className="space-y-2">
               <Label>Available To</Label>
               <Input
-                type="month"
+                type="date"
                 value={form.to}
                 onChange={(e) => update("to", e.target.value)}
               />
@@ -207,14 +197,54 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Description</Label>
-            <Textarea
-              rows={4}
-              value={form.description}
-              onChange={(e) => update("description", e.target.value)}
-            />
-          </div>
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea
+                      rows={4}
+                      value={form.description}
+                      onChange={(e) => update("description", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+          <Label>Upload Images</Label>
+
+          <Input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(e) => {
+              const files = e.target.files ? Array.from(e.target.files) : [];
+              update("images", files);
+              console.log(JSON.stringify({
+                name: files[0].name,
+                type: files[0].type,
+              }));
+            }}
+          />
+
+          {/* Preview */}
+          {form.images && form.images.length > 0 && (
+            <div className="grid grid-cols-3 gap-3 pt-2">
+              {form.images.map((file: File, idx: number) => {
+                const url = URL.createObjectURL(file);
+                return (
+                  <div
+                    key={idx}
+                    className="w-full h-24 rounded-md overflow-hidden border border-gray-300"
+                  >
+                    <img
+                      src={url}
+                      alt={`preview-${idx}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
 
           <Button className="w-full" onClick={submit} disabled={loading}>
             {loading ? "Posting..." : "Submit Listing"}

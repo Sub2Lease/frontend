@@ -20,7 +20,6 @@ interface PropertyCardProps {
   isSaved?: boolean;
   ownerId?: string;
   onMessage?: (ownerId: string) => void;
-  // NEW: agreement controls
   canMakeAgreement?: boolean;
   onMakeAgreement?: () => void;
 }

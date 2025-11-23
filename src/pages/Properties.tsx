@@ -35,7 +35,7 @@ interface ApiListing {
 interface Property {
   id: string;
   ownerId?: string;
-  image: string;
+  image: string[];
   price: number;
   title: string;
   address: string;
@@ -110,8 +110,7 @@ const Properties = () => {
         const normalized: Property[] = apiListings.map((l) => ({
           id: (l._id || "").toString(),
           ownerId: l.owner ? l.owner.toString() : undefined,
-          image:
-            "https://images.unsplash.com/photo-1505691723518-36a5ac3be353?w=800&h=600&fit=crop",
+          image: (l.images || []).map((id: string) => `${API_BASE}/images/${id}`) || ["https://images.unsplash.com/photo-1505691723518-36a5ac3be353?w=800&h=600&fit=crop"],
           price: l.rent ?? 0,
           title: l.title || l.address || "Sublease",
           address: l.address || "Madison, WI",
@@ -360,7 +359,7 @@ const Properties = () => {
               <PropertyCard
                 key={property.id}
                 id={property.id}
-                image={property.image}
+                image={property.image[0] || "https://images.unsplash.com/photo-1505691723518-36a5ac3be353?w=800&h=600&fit=crop"}
                 price={property.price}
                 securityDeposit={property.securityDeposit || undefined}
                 title={property.title}
