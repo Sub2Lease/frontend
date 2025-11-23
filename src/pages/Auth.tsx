@@ -14,13 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import MapBackground from "@/components/MapBackground";
 
-const API_ORIGIN =
-  import.meta.env.VITE_API_ORIGIN ?? "http://localhost:3000";
-// If your server mounts routes as app.use("/api", router), set VITE_API_PREFIX="/api"
-const API_PREFIX = import.meta.env.VITE_API_PREFIX ?? "";
-const API_BASE = `${API_ORIGIN}${API_PREFIX}`;
+const API_BASE = "https://sub2leasebackend.onrender.com";
 
-// Helper to safely parse JSON, or fall back to raw text
 async function parseMaybeJson(res: Response) {
   const text = await res.text();
   try {
@@ -30,7 +25,6 @@ async function parseMaybeJson(res: Response) {
   }
 }
 
-// Auth page for logging in / signing up users
 const Auth = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -42,7 +36,14 @@ const Auth = () => {
   const [signupPassword, setSignupPassword] = useState("");
   const [signupFullName, setSignupFullName] = useState("");
 
-  // LOGIN -> POST /login, then store user and go to /dashboard
+  const notifyAuthChanged = () => {
+    window.dispatchEvent(new Event("sub2lease:auth-changed"));
+  };
+
+  const goToDashboard = () => {
+    navigate("/dashboard", { replace: true });
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -69,11 +70,10 @@ const Auth = () => {
         return;
       }
 
-      // Backend returns the user object (without password)
       localStorage.setItem("sub2lease_user", JSON.stringify(data));
+      notifyAuthChanged();
       toast.success("Logged in successfully!");
-      console.log("✅ Login success, navigating to /dashboard");
-      navigate("/dashboard");
+      goToDashboard();
     } catch (error) {
       console.error("Login error:", error);
       toast.error("An error occurred during login");
@@ -82,7 +82,6 @@ const Auth = () => {
     }
   };
 
-  // SIGNUP -> POST /signup, then treat returned user as logged in
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -110,11 +109,10 @@ const Auth = () => {
         return;
       }
 
-      // Your /signup returns the newly created user (including _id)
       localStorage.setItem("sub2lease_user", JSON.stringify(data));
+      notifyAuthChanged();
       toast.success("Account created! Logged in.");
-      console.log("✅ Signup success, navigating to /dashboard");
-      navigate("/dashboard");
+      goToDashboard();
     } catch (error) {
       console.error("Signup error:", error);
       toast.error("An error occurred during signup");

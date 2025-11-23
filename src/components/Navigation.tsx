@@ -1,163 +1,112 @@
-import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, MapPin, User, Menu, X, LogOut } from "lucide-react";
-import { Button } from "./ui/button";
-import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { NavLink } from "@/components/NavLink";
 
-// Login and logout options for mobile and desktop 
+// helper to read the user from localStorage
+function getCurrentUser() {
+  try {
+    const raw = localStorage.getItem("sub2lease_user");
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
 
 const Navigation = () => {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
-  
-  const isActive = (path: string) => location.pathname === path;
-  
-  const handleSignOut = async () => {
-    await signOut();
-    toast.success("Logged out successfully");
-    navigate("/");
+  const [user, setUser] = useState<any>(() => getCurrentUser());
+
+  // listen for login / logout from anywhere in the app
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setUser(getCurrentUser());
+    };
+
+    window.addEventListener("storage", handleAuthChange);
+    window.addEventListener("sub2lease:auth-changed", handleAuthChange);
+
+    return () => {
+      window.removeEventListener("storage", handleAuthChange);
+      window.removeEventListener("sub2lease:auth-changed", handleAuthChange);
+    };
+  }, []);
+
+  const handleLoginClick = () => {
+    navigate("/auth");
   };
-  
+
+  const handleLogoutClick = () => {
+    localStorage.removeItem("sub2lease_user");
+    window.dispatchEvent(new Event("sub2lease:auth-changed"));
+    navigate("/auth", { replace: true });
+  };
+
+  const linkBase =
+    "text-sm font-medium text-muted-foreground hover:text-primary transition-colors";
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-      <div className="container mx-auto px-6 py-4">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="text-2xl font-bold">
+    <nav className="fixed top-0 inset-x-0 z-50 border-b border-border bg-background/80 backdrop-blur">
+      <div className="container mx-auto flex h-16 items-center justify-between px-6">
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2">
+          <span className="text-2xl font-bold">
             <span className="text-primary">Sub2</span>
             <span className="text-foreground">Lease</span>
-          </Link>
-          
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
-            <Link
-              to="/"
-              className={`flex items-center gap-2 transition-colors ${
-                isActive("/") ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Home className="w-4 h-4" />
-              <span className="font-medium">Home</span>
-            </Link>
-            
-            <Link
-              to="/properties"
-              className={`flex items-center gap-2 transition-colors ${
-                isActive("/properties") ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <MapPin className="w-4 h-4" />
-              <span className="font-medium">Properties</span>
-            </Link>
-            
-            {user && (
-              <Link
-                to="/dashboard"
-                className={`flex items-center gap-2 transition-colors ${
-                  isActive("/dashboard") ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <User className="w-4 h-4" />
-                <span className="font-medium">Dashboard</span>
-              </Link>
-            )}
-          </div>
-          
-          {/* Auth Button */}
-          <div className="hidden md:block">
-            {user ? (
-              <Button
-                variant="outline"
-                onClick={handleSignOut}
-                className="border-primary/50 text-primary hover:bg-primary/10"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Button>
-            ) : (
-              <Button
-                onClick={() => navigate("/auth")}
-                className="bg-primary hover:bg-primary/90"
-              >
-                Login
-              </Button>
-            )}
-          </div>
-          
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden text-foreground"
+          </span>
+        </Link>
+
+        {/* Center links */}
+        <div className="flex items-center gap-6">
+          <NavLink
+            to="/"
+            className={linkBase}
+            activeClassName="text-primary"
           >
-            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+            Home
+          </NavLink>
+
+          <NavLink
+            to="/properties"
+            className={linkBase}
+            activeClassName="text-primary"
+          >
+            Properties
+          </NavLink>
+
+          {user && (
+            <NavLink
+              to="/dashboard"
+              className={linkBase}
+              activeClassName="text-primary"
+            >
+              Dashboard
+            </NavLink>
+          )}
         </div>
-        
-        {/* Mobile Menu */}
-        {isOpen && (
-          <div className="md:hidden mt-4 pb-4 space-y-4">
-            <Link
-              to="/"
-              onClick={() => setIsOpen(false)}
-              className={`flex items-center gap-2 py-2 transition-colors ${
-                isActive("/") ? "text-primary" : "text-muted-foreground"
-              }`}
+
+        {/* Right-side auth button */}
+        <div>
+          {user ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleLogoutClick}
+              className="px-4"
             >
-              <Home className="w-4 h-4" />
-              <span className="font-medium">Home</span>
-            </Link>
-            
-            <Link
-              to="/properties"
-              onClick={() => setIsOpen(false)}
-              className={`flex items-center gap-2 py-2 transition-colors ${
-                isActive("/properties") ? "text-primary" : "text-muted-foreground"
-              }`}
+              Logout
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={handleLoginClick}
+              className="px-4 bg-primary hover:bg-primary/90"
             >
-              <MapPin className="w-4 h-4" />
-              <span className="font-medium">Properties</span>
-            </Link>
-            
-            {user && (
-              <Link
-                to="/dashboard"
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-2 py-2 transition-colors ${
-                  isActive("/dashboard") ? "text-primary" : "text-muted-foreground"
-                }`}
-              >
-                <User className="w-4 h-4" />
-                <span className="font-medium">Dashboard</span>
-              </Link>
-            )}
-            
-            {user ? (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  handleSignOut();
-                  setIsOpen(false);
-                }}
-                className="border-primary/50 text-primary hover:bg-primary/10 w-full justify-start"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Button>
-            ) : (
-              <Button
-                onClick={() => {
-                  navigate("/auth");
-                  setIsOpen(false);
-                }}
-                className="bg-primary hover:bg-primary/90 w-full"
-              >
-                Login
-              </Button>
-            )}
-          </div>
-        )}
+              Login
+            </Button>
+          )}
+        </div>
       </div>
     </nav>
   );

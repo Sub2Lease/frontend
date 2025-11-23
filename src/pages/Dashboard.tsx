@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://sub2leasebackend.onrender.com";
 
 interface ApiUser {
   _id?: string;
@@ -28,17 +28,16 @@ interface ApiUser {
 
 interface ApiListing {
   _id?: string;
-  // new schema fields
-  title?: string;
-  capacity?: number;
-  // legacy / extra fields we still want to use
   rent?: number;
   address?: string;
+  title?: string;
   buildingName?: string;
+  capacity?: number;
   peopleCount?: number;
   images?: string[];
   description?: string;
   owner?: string;
+  views?: number;
 }
 
 interface ApiAgreement {
@@ -100,7 +99,7 @@ const Dashboard = () => {
 
   const navigate = useNavigate();
 
-  // ---------- Load "current user" ----------
+  // ---------- Load "current user" from localStorage or /users ----------
   useEffect(() => {
     const loadUser = async () => {
       setLoadingProfile(true);
@@ -120,7 +119,6 @@ const Dashboard = () => {
           }
         }
 
-        // Fallback: use first user from /users so dev still works
         const res = await fetch(`${API_BASE}/users`);
         if (!res.ok) {
           console.error("Failed to load users:", res.status);
@@ -161,7 +159,9 @@ const Dashboard = () => {
       try {
         // 1) My listings (as owner)
         const myListingsRes = await fetch(
-          `${API_BASE}/listings?ownerId=${encodeURIComponent(userProfile.id)}`
+          `${API_BASE}/listings?ownerId=${encodeURIComponent(
+            userProfile.id
+          )}`
         );
         if (myListingsRes.ok) {
           const data: ApiListing[] = await myListingsRes.json();
@@ -180,7 +180,7 @@ const Dashboard = () => {
                 title,
                 price,
                 status: "Active",
-                views: (listing as any).views ?? 0,
+                views: listing.views ?? 0,
               };
             })
           );
@@ -264,23 +264,17 @@ const Dashboard = () => {
     setPostingLoading(true);
 
     try {
-      const capacityValue = newLease.roommates
-        ? Number(newLease.roommates)
-        : 1;
-
       const res = await fetch(`${API_BASE}/listings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           owner: userProfile.id,
-          // schema-required fields
-          title: newLease.title.trim(),
-          capacity: capacityValue,
-          // keep legacy / extra fields populated too
-          buildingName: newLease.title.trim(),
-          peopleCount: capacityValue,
+          title: newLease.title.trim(), // REQUIRED by schema
           address: newLease.address,
           rent: Number(newLease.price),
+          capacity: newLease.roommates
+            ? Number(newLease.roommates)
+            : 1, // map roommates -> capacity
           startDate: newLease.from || null,
           endDate: newLease.to || null,
           description: newLease.description || null,
@@ -290,6 +284,7 @@ const Dashboard = () => {
                 .map((a) => a.trim())
                 .filter(Boolean)
             : [],
+          buildingName: newLease.title.trim(), // optional convenience field
         }),
       });
 
@@ -316,7 +311,7 @@ const Dashboard = () => {
           title,
           price,
           status: "Active",
-          views: 0,
+          views: created.views ?? 0,
         },
         ...prev,
       ]);
@@ -372,7 +367,10 @@ const Dashboard = () => {
                     placeholder="Modern Studio Near Campus"
                     value={newLease.title}
                     onChange={(e) =>
-                      setNewLease((prev) => ({ ...prev, title: e.target.value }))
+                      setNewLease((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
                     }
                   />
                 </div>
@@ -503,7 +501,7 @@ const Dashboard = () => {
           </Dialog>
         </div>
 
-        {/* 2x2 layout: Profile / Smart Payments on top, Posted Leases / Current Sublease below */}
+        {/* 2x2 layout: Profile / Smart Payments top, Posted Leases / Current Sublease bottom */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Profile */}
           <Card>
@@ -531,13 +529,7 @@ const Dashboard = () => {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate("/auth")}
-                  >
-                    Edit Profile
-                  </Button>
+                  {/* Edit Profile button removed as requested */}
                 </>
               ) : (
                 <div className="space-y-3">

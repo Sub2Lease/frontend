@@ -3,7 +3,7 @@ import PropertyCard from "@/components/PropertyCard";
 import PropertyFilters from "@/components/PropertyFilters";
 import InteractiveMap from "@/components/InteractiveMap";
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://sub2leasebackend.onrender.com";
 
 interface ApiUser {
   _id?: string;
