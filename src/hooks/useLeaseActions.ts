@@ -13,33 +13,30 @@ export const useLeaseActions = () => {
   // ------------------------
   // PAY SECURITY DEPOSIT
   // ------------------------
-  const payDeposit = (leaseId: number, amountEth: string) => {
-    if (!address || !chainId) throw new Error("Wallet not connected");
-
+  const payDeposit = (leaseId: number, amountWei: string) => {
     writeContract({
         abi: leaseAbi,
         address: LEASE_CONTRACT,
         functionName: "fundSecurityDeposit",
         args: [BigInt(leaseId)],
-        value: parseEther(amountEth),
+        value: BigInt(amountWei), // <----- FIXED
         account: address,
         chainId,
         chain: undefined
     });
-  };
+};
+
 
   // ------------------------
   // PAY RENT
   // ------------------------
-  const payRent = (leaseId: number, amountEth: string) => {
-    if (!address || !chainId) throw new Error("Wallet not connected");
-
+  const payRent = (leaseId: number, amountWei: string) => {
     writeContract({
         abi: leaseAbi,
         address: LEASE_CONTRACT,
         functionName: "depositRent",
         args: [BigInt(leaseId)],
-        value: parseEther(amountEth),
+        value: BigInt(amountWei), // <----- FIXED
         account: address,
         chainId,
         chain: undefined
