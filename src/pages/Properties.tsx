@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-const API_BASE = "https://sub2leasebackend.onrender.com";
+import { API_BASE, LOCAL_STORAGE_USER_KEY } from "../constants";
 
 interface ApiListing {
   _id?: string;
@@ -49,7 +49,7 @@ interface Property {
 
 function getCurrentUser() {
   try {
-    const raw = localStorage.getItem("sub2lease_user");
+    const raw = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {

@@ -5,7 +5,7 @@ import type { LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-const API_BASE = "https://sub2leasebackend.onrender.com";
+import { API_BASE } from "../constants";
 
 interface ApiListing {
   _id: string;

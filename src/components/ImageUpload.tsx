@@ -1,18 +1,27 @@
-import React, { useState } from "react";
+import { useState, useRef } from "react";
+import { IMAGE_ENDPOINTS } from "../constants";
+import { useRefreshLocalUser } from "@/hooks/useRefreshLocalUser";
 
-export default function ImageUpload({ listingId }) {
-  const [file, setFile] = useState(null);
+export default function ImageUpload({ id, to, callback }: { id: string; to: keyof typeof IMAGE_ENDPOINTS; callback?: () => void }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
-  const [uploadedImage, setUploadedImage] = useState(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
-    setUploadedImage(null);
-    setError("");
+  const refreshLocalUser = useRefreshLocalUser(id);
+
+  const url = IMAGE_ENDPOINTS[to](id);
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click(); // trigger file picker
   };
 
-  const handleUpload = async () => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      upload(e.target.files[0]);
+    }
+  };
+
+  const upload = async (file: File) => {
     if (!file) {
       setError("Please select a file first.");
       return;
@@ -25,7 +34,7 @@ export default function ImageUpload({ listingId }) {
       const formData = new FormData();
       formData.append("image", file);
 
-      const response = await fetch(`/listings/${listingId}/uploadImage`, {
+      const response = await fetch(url, {
         method: "POST",
         body: formData,
       });
@@ -36,8 +45,8 @@ export default function ImageUpload({ listingId }) {
       }
 
       const data = await response.json();
-      setUploadedImage(data);
-      setFile(null);
+      await refreshLocalUser();
+      if (callback) callback();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -46,22 +55,23 @@ export default function ImageUpload({ listingId }) {
   };
 
   return (
-    <div className="p-4 border rounded w-full max-w-md">
-      <h2 className="text-lg font-semibold mb-2">Upload Image</h2>
+    <>
       <input
         type="file"
         accept="image/*"
+        ref={fileInputRef}
         onChange={handleFileChange}
-        className="mb-2"
+        className="hidden"
       />
       <button
-        onClick={handleUpload}
+        onClick={handleButtonClick}
         disabled={uploading}
-        className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+        className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50 text-[14px]"
       >
-        {uploading ? "Uploading..." : "Upload"}
+        {uploading ? "Uploading..." : "Upload Image"}
       </button>
+
       {error && <p className="text-red-500 mt-2">{error}</p>}
-    </div>
+    </>
   );
 }

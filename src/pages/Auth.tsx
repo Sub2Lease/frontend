@@ -14,16 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import MapBackground from "@/components/MapBackground";
 
-const API_BASE = "https://sub2leasebackend.onrender.com";
-
-async function parseMaybeJson(res: Response) {
-  const text = await res.text();
-  try {
-    return { data: text ? JSON.parse(text) : null, raw: text };
-  } catch {
-    return { data: null, raw: text };
-  }
-}
+import { API_BASE, LOCAL_STORAGE_USER_KEY } from "../constants";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -56,21 +47,22 @@ const Auth = () => {
           email: loginEmail,
           password: loginPassword,
         }),
-      });
+      }).then(res => res.json());
 
-      const { data, raw } = await parseMaybeJson(res);
+      const error: string | undefined = res?.error;
 
-      if (!res.ok) {
-        const msg =
-          (data && (data as any).error) ||
-          raw ||
-          "Invalid email or password";
-        toast.error(msg);
-        console.error("Login failed:", raw);
+      if (!res) {
+        toast.error("No response from server");
+        console.error("Login failed: No response from server");
+        return;
+      }
+      if (error) {
+        toast.error(error);
+        console.error("Login failed:", error);
         return;
       }
 
-      localStorage.setItem("sub2lease_user", JSON.stringify(data));
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(res));
       notifyAuthChanged();
       toast.success("Logged in successfully!");
       goToDashboard();
@@ -95,21 +87,22 @@ const Auth = () => {
           email: signupEmail,
           password: signupPassword,
         }),
-      });
+      }).then(res => res.json());
 
-      const { data, raw } = await parseMaybeJson(res);
+      const error: string | undefined = res?.error;
 
-      if (!res.ok) {
-        const msg =
-          (data && (data as any).error) ||
-          raw ||
-          "Failed to create account";
-        toast.error(msg);
-        console.error("Signup failed:", raw);
+      if (!res) {
+        toast.error("No response from server");
+        console.error("Signup failed: No response from server");
+        return;
+      }
+      if (error) {
+        toast.error(error);
+        console.error("Signup failed:", error);
         return;
       }
 
-      localStorage.setItem("sub2lease_user", JSON.stringify(data));
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(res));
       notifyAuthChanged();
       toast.success("Account created! Logged in.");
       goToDashboard();

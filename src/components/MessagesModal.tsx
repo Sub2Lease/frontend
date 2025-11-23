@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-const API_BASE = "https://sub2leasebackend.onrender.com";
+import { API_BASE } from "../constants";
 
 interface Message {
   _id?: string;

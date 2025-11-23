@@ -21,10 +21,12 @@ import {
   sepolia,
 } from 'wagmi/chains';
 
+import { LOCAL_STORAGE_USER_KEY } from "./constants";
+
 // helper to read the user from localStorage
 function getCurrentUser() {
   try {
-    const raw = localStorage.getItem("sub2lease_user");
+    const raw = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {

@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import InteractiveMap from "@/components/InteractiveMap";
 
+import { LOCAL_STORAGE_USER_KEY } from "../constants";
+
 const Landing = () => {
   const navigate = useNavigate();
 
@@ -14,7 +16,7 @@ const Landing = () => {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("sub2lease_user");
+      const raw = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
       setIsLoggedIn(!!raw);
     } catch {
       setIsLoggedIn(false);

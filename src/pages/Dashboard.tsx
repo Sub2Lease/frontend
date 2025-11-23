@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, FileText, DollarSign } from "lucide-react";
+import { PlusCircle, FileText, DollarSign, RefreshCcw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { MessagesModal } from "@/components/MessagesModal";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
-const API_BASE = "https://sub2leasebackend.onrender.com";
+import { API_BASE, IMAGE_URL, LOCAL_STORAGE_USER_KEY } from "../constants";
+import ImageUpload from "@/components/ImageUpload";
 
 interface ApiUser {
   _id?: string;
@@ -84,6 +85,7 @@ interface PostedLease {
 
 
 const Dashboard = () => {
+  const [triggerUserLoad, setTriggerUserLoad] = useState(false);
   const [isPostingLease, setIsPostingLease] = useState(false);
   const [postingLoading, setPostingLoading] = useState(false);
 
@@ -116,7 +118,8 @@ const Dashboard = () => {
     const loadUser = async () => {
       setLoadingProfile(true);
       try {
-        const raw = localStorage.getItem("sub2lease_user");
+        const raw = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
+        console.log(raw);
         if (raw) {
           const u: ApiUser = JSON.parse(raw);
           if (u && (u._id || u.email)) {
@@ -124,7 +127,7 @@ const Dashboard = () => {
             const email = u.email || "";
             const name =
               u.name || (email ? email.split("@")[0] : "Sub2Lease User");
-            const avatarUrl = u.profileImage || null;
+            const avatarUrl = u.profileImage ? IMAGE_URL(u.profileImage) : null;
 
             setUserProfile({ id, name, email, avatarUrl });
             return;
@@ -150,7 +153,7 @@ const Dashboard = () => {
         const email = u.email || "";
         const name =
           u.name || (email ? email.split("@")[0] : "Sub2Lease User");
-        const avatarUrl = u.profileImage || null;
+        const avatarUrl = u.profileImage ? IMAGE_URL(u.profileImage) : null;
 
         setUserProfile({ id, name, email, avatarUrl });
       } catch (err) {
@@ -162,7 +165,7 @@ const Dashboard = () => {
     };
 
     loadUser();
-  }, []);
+  }, [triggerUserLoad]);
 
   // ---------- Load dashboard data (listings + agreements) ----------
   useEffect(() => {
@@ -613,7 +616,11 @@ setPaymentHistory(
           {/* Profile */}
           <Card>
             <CardHeader>
-              <CardTitle>Profile</CardTitle>
+              <div className="flex gap-2">
+                <CardTitle>Profile</CardTitle>
+                <RefreshCcw className="cursor-pointer" onClick={() => setTriggerUserLoad(prev => !prev)} />
+              </div>
+              
             </CardHeader>
             <CardContent className="space-y-4">
               {loadingProfile ? (
@@ -621,12 +628,15 @@ setPaymentHistory(
               ) : userProfile ? (
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <Avatar className="w-20 h-20">
-                      {userProfile.avatarUrl && (
-                        <AvatarImage src={userProfile.avatarUrl} />
-                      )}
-                      <AvatarFallback>{initials}</AvatarFallback>
-                    </Avatar>
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Avatar className="w-20 h-20">
+                        {userProfile.avatarUrl && (
+                          <AvatarImage src={userProfile.avatarUrl} />
+                        )}
+                        <AvatarFallback>{initials}</AvatarFallback>
+                      </Avatar>
+                      <ImageUpload id={userProfile.id} to="USER" callback={() => setTriggerUserLoad(prev => !prev)} />
+                    </div>
                     <div>
                       <h3 className="font-semibold text-lg">
                         {userProfile.name}
