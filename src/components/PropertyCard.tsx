@@ -3,7 +3,6 @@ import { Heart, MapPin, Calendar, Users, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
 
 interface PropertyCardProps {
   id: string | number;
@@ -18,8 +17,8 @@ interface PropertyCardProps {
   amenities: string[];
   onSave?: (id: number | string) => void;
   isSaved?: boolean;
-  ownerId?: string;                      // NEW
-  onMessage?: (ownerId: string) => void; // NEW
+  ownerId?: string;
+  onMessage?: (ownerId: string) => void;
 }
 
 const PropertyCard = ({
@@ -38,10 +37,8 @@ const PropertyCard = ({
   ownerId,
   onMessage,
 }: PropertyCardProps) => {
-  const [saved, setSaved] = useState(isSaved);
-
+  
   const handleSave = () => {
-    setSaved(!saved);
     onSave?.(id);
   };
 
@@ -58,18 +55,21 @@ const PropertyCard = ({
           alt={title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
+
+        {/* Save button — now controlled by props */}
         <Button
           size="icon"
           variant="ghost"
           className={`absolute top-3 right-3 ${
-            saved
+            isSaved
               ? "text-primary bg-background/90"
               : "text-foreground bg-background/70"
           } hover:bg-background/90 transition-all`}
           onClick={handleSave}
         >
-          <Heart className={`w-5 h-5 ${saved ? "fill-current" : ""}`} />
+          <Heart className={`w-5 h-5 ${isSaved ? "fill-current" : ""}`} />
         </Button>
+
         <Badge className="absolute bottom-3 left-3 bg-primary text-primary-foreground font-bold text-lg">
           ${price}/mo
         </Badge>
