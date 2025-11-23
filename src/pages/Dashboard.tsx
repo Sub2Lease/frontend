@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import ProfileCard from "@/components/dashboard/ProfileCard";
-import PaymentsCard from "@/components/dashboard/PaymentsCard";
+import AppliedLeasesCard from "@/components/dashboard/AppliedLeasesCard";
 import PostedLeasesCard from "@/components/dashboard/PostedLeasesCard";
 import AgreementsCard from "@/components/dashboard/AgreementsCard";
 import PostLeaseDialog from "@/components/dashboard/PostLeaseDialog";
@@ -60,6 +60,7 @@ const Dashboard = () => {
   const [loadingProfile, setLoadingProfile] = useState(true);
 
   const [postedLeases, setPostedLeases] = useState([]);
+  const [appliedLeases, setAppliedLeases] = useState([]);
   const [agreements, setAgreements] = useState<ApiAgreement[]>([]);
 
   const { leases, payments, isLoading: paymentsLoading } = useLeasePayments();
@@ -133,6 +134,12 @@ const Dashboard = () => {
         );
         const listings = listingsRes.ok ? await listingsRes.json() : [];
 
+         // Load user's applications
+        const appliedRes = await fetch(
+          `${API_BASE}/agreements?tenantId=${encodeURIComponent(userProfile.id)}`
+        );
+        const appliedListings = appliedRes.ok ? await appliedRes.json() : [];
+
         setPostedLeases(
           listings.map((l: ApiListing) => ({
             id: String(l._id),
@@ -143,6 +150,19 @@ const Dashboard = () => {
             views: (l as any).views ?? 0,
           }))
         );
+
+        setAppliedLeases(
+          appliedListings.map((l: ApiListing) => ({
+            id: String(l._id),
+            title: l.title || l.address,
+            price: l.rent ?? 0,
+            status: "Active",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            views: (l as any).views ?? 0,
+          }))
+        );
+
+        console.log(listings);
 
         // Load agreements (owner + tenant)
         const [ownerRes, tenantRes] = await Promise.all([
@@ -216,14 +236,7 @@ const Dashboard = () => {
 
           {activeTab === "tenant" && (
             <>
-              <PaymentsCard
-                leases={leases}
-                payments={payments}
-                isLoading={paymentsLoading || isPending}
-                onPayDeposit={payDeposit}
-                onPayRent={payRent}
-              />
-              <AgreementsCard agreements={agreements} userId={userProfile?.id} />
+              <AppliedLeasesCard leases={appliedLeases} />
             </>
           )}
           {activeTab === "owner" && (

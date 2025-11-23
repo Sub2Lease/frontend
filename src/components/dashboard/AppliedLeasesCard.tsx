@@ -1,7 +1,8 @@
-// src/components/dashboard/PostedLeasesCard.tsx
+// src/components/dashboard/AppliedLeasesCard.tsx
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText } from "lucide-react";
+import { API_BASE, IMAGE_URL, LOCAL_STORAGE_USER_KEY } from "@/constants";
 
 interface Lease {
   id: string;
@@ -11,7 +12,8 @@ interface Lease {
   views?: number;
 }
 
-const PostedLeasesCard = ({ leases }: { leases: Lease[] }) => {
+const AppliedLeasesCard = ({ leases }: { leases: Lease[] }) => {
+
   return (
     <Card>
       <CardHeader>
@@ -52,4 +54,4 @@ const PostedLeasesCard = ({ leases }: { leases: Lease[] }) => {
   );
 };
 
-export default PostedLeasesCard;
+export default AppliedLeasesCard;

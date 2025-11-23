@@ -8,6 +8,7 @@ interface PropertyCardProps {
   id: string | number;
   image: string;
   price: number;
+  securityDeposit: number;
   title: string;
   address: string;
   availableFrom?: string;
@@ -28,6 +29,7 @@ const PropertyCard = ({
   id,
   image,
   price,
+  securityDeposit,
   title,
   address,
   availableFrom,
@@ -111,6 +113,12 @@ const PropertyCard = ({
             <span>{distance} mi to campus</span>
           </div>
         </div>
+
+        {securityDeposit !== undefined && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>${securityDeposit} Security Deposit</span>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2 pt-2 items-center justify-between">
           <div className="flex flex-wrap gap-2">

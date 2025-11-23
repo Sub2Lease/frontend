@@ -362,6 +362,7 @@ const Properties = () => {
                 id={property.id}
                 image={property.image}
                 price={property.price}
+                securityDeposit={property.securityDeposit || undefined}
                 title={property.title}
                 address={property.address}
                 availableFrom={property.availableFrom}
@@ -420,7 +421,7 @@ const Properties = () => {
                 <div className="space-y-2">
                   <Label>Start Date</Label>
                   <Input
-                    type="date"
+                    type="month"
                     value={agreementForm.startDate}
                     onChange={(e) =>
                       setAgreementForm((f) => ({
@@ -433,7 +434,7 @@ const Properties = () => {
                 <div className="space-y-2">
                   <Label>End Date</Label>
                   <Input
-                    type="date"
+                    type="month"
                     value={agreementForm.endDate}
                     onChange={(e) =>
                       setAgreementForm((f) => ({
@@ -489,20 +490,6 @@ const Properties = () => {
                     }
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Pay Term</Label>
-                <Input
-                  value={agreementForm.payTerm}
-                  onChange={(e) =>
-                    setAgreementForm((f) => ({
-                      ...f,
-                      payTerm: e.target.value,
-                    }))
-                  }
-                  placeholder="monthly"
-                />
               </div>
 
               <Button

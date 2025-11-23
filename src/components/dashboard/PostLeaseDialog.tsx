@@ -28,6 +28,7 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
   const [form, setForm] = useState({
     title: "",
     price: "",
+    securityDeposit: "",
     capacity: "",
     address: "",
     from: "",
@@ -42,7 +43,7 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
     const startDate = new Date(form.from);
     const endDate = new Date(form.to);
 
-    if (!form.title || !form.price || !form.address || !form.from || !form.to) {
+    if (!form.title || !form.price || !form.securityDeposit || !form.address || !form.from || !form.to) {
       alert("Please fill in all required fields.");
       return;
     }
@@ -61,6 +62,11 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
       alert("Rent must be positive.");
       return;
     }
+      
+    if (Number(form.securityDeposit) <= 0) {
+      alert("Security deposit must be positive.");
+      return;
+    }
 
     setLoading(true);
 
@@ -72,6 +78,7 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
         title: form.title,
         address: form.address,
         rent: Number(form.price),
+        securityDeposit: Number(form.securityDeposit),
         capacity: Number(form.capacity || 1),
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
@@ -93,6 +100,7 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
       setForm({
         title: "",
         price: "",
+        securityDeposit: "",
         capacity: "",
         address: "",
         from: "",
@@ -141,6 +149,15 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
                 onChange={(e) => update("price", e.target.value)}
               />
             </div>
+            
+            <div className="space-y-2">
+              <Label>Security Deposit</Label>
+              <Input
+                type="number"
+                value={form.securityDeposit}
+                onChange={(e) => update("securityDeposit", e.target.value)}
+              />
+            </div>
 
             <div className="space-y-2">
               <Label>Capacity (1-2 people per bed)</Label>
@@ -166,7 +183,7 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
             <div className="space-y-2">
               <Label>Available From</Label>
               <Input
-                type="date"
+                type="month"
                 value={form.from}
                 onChange={(e) => update("from", e.target.value)}
               />
@@ -175,7 +192,7 @@ const PostLeaseDialog = ({ open, onOpenChange, ownerId, onCreated }: Props) => {
             <div className="space-y-2">
               <Label>Available To</Label>
               <Input
-                type="date"
+                type="month"
                 value={form.to}
                 onChange={(e) => update("to", e.target.value)}
               />
