@@ -1,3 +1,4 @@
+// src/components/ActivateSmartPaymentsButton.tsx
 import { Button } from "@/components/ui/button";
 import { useActivateSmartPayments } from "@/hooks/useActivateSmartPayments";
 
@@ -8,6 +9,7 @@ const ActivateSmartPaymentsButton = ({ agreement, userProfile }) => {
     <Button
       size="sm"
       onClick={() => activate(agreement)}
+      className="bg-green-600 text-white hover:bg-green-700"
     >
       Activate Smart Payments
     </Button>

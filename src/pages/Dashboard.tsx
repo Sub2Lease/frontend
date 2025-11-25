@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/Dashboard.tsx
 
 import { useEffect, useState } from "react";
@@ -38,6 +39,7 @@ interface ApiAgreement {
   startDate?: string;
   endDate?: string;
   rent?: number;
+  securityDeposit?: number;
   payTerm?: string;
   listing?: ApiListing;
   owner?: string;
@@ -62,10 +64,10 @@ const Dashboard = () => {
 
   const [postedLeases, setPostedLeases] = useState([]);
   const [appliedLeases, setAppliedLeases] = useState([]);
-  const [agreements, setAgreements] = useState<ApiAgreement[]>([]);
+  const [agreements, setAgreements] = useState<any[]>([]);
 
-  const { leases, payments, isLoading: paymentsLoading } = useLeasePayments();
-  const { payDeposit, payRent, isPending } = useLeaseActions();
+  const { leases } = useLeasePayments();
+  const { payDeposit, payRent } = useLeaseActions();
 
   const [postDialogOpen, setPostDialogOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -97,7 +99,6 @@ const Dashboard = () => {
           }
         }
 
-        // fallback dev mode
         const res = await fetch(`${API_BASE}/users`);
         const users: ApiUser[] = res.ok ? await res.json() : [];
 
@@ -135,11 +136,15 @@ const Dashboard = () => {
         );
         const listings = listingsRes.ok ? await listingsRes.json() : [];
 
-         // Load user's applications
+        // Load user's applications (tenant)
         const appliedRes = await fetch(
-          `${API_BASE}/agreements?tenantId=${encodeURIComponent(userProfile.id)}&populateListing=t`
+          `${API_BASE}/agreements?tenantId=${encodeURIComponent(
+            userProfile.id
+          )}&populateListing=t`
         );
-        const appliedAgreements = appliedRes.ok ? await appliedRes.json() : [];
+        const appliedAgreements = appliedRes.ok
+          ? await appliedRes.json()
+          : [];
 
         setPostedLeases(
           listings.map((l: ApiListing) => ({
@@ -147,7 +152,6 @@ const Dashboard = () => {
             title: l.title || l.address,
             price: l.rent ?? 0,
             status: "Active",
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             views: (l as any).views ?? 0,
           }))
         );
@@ -155,33 +159,49 @@ const Dashboard = () => {
         setAppliedLeases(
           appliedAgreements.map((l: ApiAgreement) => ({
             id: String(l._id),
-            title: l.listing.title || l.listing.address,
+            title: l.listing?.title || l.listing?.address,
             price: l.rent ?? 0,
             status: "Active",
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             views: (l as any).views ?? 0,
           }))
         );
 
-        console.log(listings);
-
-        // Load agreements (owner + tenant)
+        // Load full agreements (owner + tenant)
         const [ownerRes, tenantRes] = await Promise.allSettled([
           fetch(`${API_BASE}/agreements?ownerId=${userProfile.id}`),
           fetch(`${API_BASE}/agreements?tenantId=${userProfile.id}`),
         ]);
 
-        console.log(ownerRes, tenantRes);
-
         const all = [];
-        if (ownerRes.status === "fulfilled") all.push(...(await ownerRes.value.json()));
-        if (tenantRes.status === "fulfilled") all.push(...(await tenantRes.value.json()));
+        if (ownerRes.status === "fulfilled")
+          all.push(...(await ownerRes.value.json()));
+        if (tenantRes.status === "fulfilled")
+          all.push(...(await tenantRes.value.json()));
 
         const unique = Array.from(
           new Map(all.map((a) => [String(a._id), a])).values()
         );
 
-        setAgreements(unique);
+        // 🔥 Normalize agreements so InProgress can use them safely
+        const normalized = unique.map((a) => ({
+          _id: String(a._id),
+          listingTitle:
+            a.propertyTitle ||
+            a.listing?.title ||
+            a.listing?.address ||
+            "Lease",
+          rent: a.rent ?? 0,
+          securityDeposit: a.securityDeposit ?? 0,
+          numPeople: a.listing?.capacity ?? 1,
+          startDate: a.startDate,
+          endDate: a.endDate,
+          owner: a.owner,
+          tenant: a.tenant,
+          ownerSigned: a.ownerSigned,
+          tenantSigned: a.tenantSigned,
+        }));
+
+        setAgreements(normalized);
       } catch (err) {
         console.error("Failed to load dashboard:", err);
       }
@@ -205,16 +225,17 @@ const Dashboard = () => {
           />
         </div>
 
-        {/* 2x2 grid */}
+        {/* Tabs */}
         <div className="flex flex-col gap-4">
-
           <div className="flex justify-center items-end">
             <div className="bg-muted rounded-md w-fit p-2 gap-4 flex">
               <Button
                 variant="outline"
                 size="lg"
                 disabled={activeTab === "owner"}
-                className={activeTab === "owner" ? "bg-primary !opacity-100" : ""}
+                className={
+                  activeTab === "owner" ? "bg-primary !opacity-100" : ""
+                }
                 onClick={() => setActiveTab("owner")}
               >
                 As a Sublessor
@@ -223,30 +244,37 @@ const Dashboard = () => {
                 variant="outline"
                 size="lg"
                 disabled={activeTab === "tenant"}
-                className={activeTab === "tenant" ? "bg-primary !opacity-100" : ""}
+                className={
+                  activeTab === "tenant" ? "bg-primary !opacity-100" : ""
+                }
                 onClick={() => setActiveTab("tenant")}
               >
                 As a Tenant
               </Button>
             </div>
-            {/* <ProfileCard
-              user={userProfile}
-              loading={loadingProfile}
-              onRefresh={() => setTriggerUserLoad((x) => !x)}
-              onInbox={() => setInboxOpen(true)}
-            /> */}
           </div>
 
-          {activeTab === "tenant" && (
-            <>
-              <InProgress agreements={agreements} userProfile={userProfile} tenant={true} />
-              <AppliedLeasesCard leases={appliedLeases} />
-            </>
-          )}
+          {/* OWNER VIEW */}
           {activeTab === "owner" && (
             <>
-              <InProgress agreements={agreements} userProfile={userProfile} tenant={false} />
+              <InProgress
+                agreements={agreements}
+                userProfile={userProfile}
+                tenant={false}
+              />
               <PostedLeasesCard leases={postedLeases} />
+            </>
+          )}
+
+          {/* TENANT VIEW */}
+          {activeTab === "tenant" && (
+            <>
+              <InProgress
+                agreements={agreements}
+                userProfile={userProfile}
+                tenant={true}
+              />
+              <AppliedLeasesCard leases={appliedLeases} />
             </>
           )}
 

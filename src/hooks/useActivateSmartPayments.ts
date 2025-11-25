@@ -1,5 +1,4 @@
 import { useLeaseActions } from "@/hooks/useLeaseActions";
-import { keccak256, toHex } from "viem";
 import { API_BASE } from "@/constants";
 
 export const useActivateSmartPayments = () => {
@@ -9,41 +8,30 @@ export const useActivateSmartPayments = () => {
   const activate = async (agreement: any) => {
     console.log("DEBUG AGREEMENT:", agreement);
 
-    // Validate required fields
-    if (!agreement.id) throw new Error("Agreement missing id");
-    if (agreement.rent === undefined) throw new Error("Agreement missing rent");
-    if (agreement.securityDeposit === undefined) throw new Error("Agreement missing securityDeposit");
-    if (!agreement.startDate) throw new Error("Agreement missing startDate");
-    if (!agreement.tenant) throw new Error("Agreement missing tenant userId");
+    if (!agreement._id) throw new Error("Agreement missing _id");
 
-    // 1) Convert UUID/string id → uint256
-    const leaseId = BigInt(keccak256(toHex(agreement.id)));
+    // SAFE leaseId from Mongo
+    const leaseId = BigInt("0x" + agreement._id.substring(0, 16));
 
-    // 2) Treat rent/securityDeposit as WEI
     const rentWei = BigInt(agreement.rent);
     const depositWei = BigInt(agreement.securityDeposit);
 
-    // 3) Fetch tenant from backend to get walletAddress
-    const tenantUser = await fetch(`${API_BASE}/users?userId=${agreement.tenant}`)
-  .then((r) => r.json());
+    const tenantUser = await fetch(
+      `${API_BASE}/users?userId=${agreement.tenant}`
+    ).then((r) => r.json());
 
-    if (!tenantUser[0].walletAddress) {
-      throw new Error("Tenant has no walletAddress stored.");
-    }
+    const tenantWallet = tenantUser[0].walletAddress as `0x${string}`;
 
-    const tenantWallet = tenantUser.walletAddress as `0x${string}`;
+    const startUnix = Math.floor(
+      new Date(agreement.startDate).getTime() / 1000
+    );
 
-    // 4) Convert startDate → unix seconds
-    const startUnix = Math.floor(new Date(agreement.startDate).getTime() / 1000);
-    const start = BigInt(startUnix);
-
-    // 5) Call the smart contract
     await createLease(
       leaseId,
       tenantWallet,
       rentWei,
       depositWei,
-      start
+      BigInt(startUnix)
     );
   };
 

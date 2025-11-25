@@ -22,13 +22,13 @@ interface ApiListing {
 const MapCard = ({ listing }: { listing: ApiListing }) => {
   return (
     <div className="w-60 rounded-xl shadow-lg bg-white text-black overflow-hidden border border-gray-200">
-      <div className="h-28 w-full overflow-hidden">
+      {/* <div className="h-28 w-full overflow-hidden">
         <img
           src={listing.images?.[0] || "https://via.placeholder.com/300"}
           alt={listing.title}
           className="w-full h-full object-cover"
         />
-      </div>
+      </div> */}
 
       <div className="p-3 space-y-1">
         <div className="font-bold text-lg">

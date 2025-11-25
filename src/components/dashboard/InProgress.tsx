@@ -1,58 +1,52 @@
 // src/components/dashboard/InProgress.tsx
+
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { API_BASE } from "@/constants";
-import { useState } from "react";
 import ActivateSmartPaymentsButton from "./ActivateSmartPaymentsButton";
+import LeasePaymentControls from "@/components/LeasePaymentControls";
+import { useLeasePaymentsOwner } from "@/hooks/useLeasePaymentsOwner";
 
 interface Agreement {
-  _id?: string;
-  listingTitle?: string;
-  rent?: number;
-  numPeople?: number;
-  startDate?: string;
-  endDate?: string;
-  owner?: string;
-  tenant?: string;
-  ownerSigned?: boolean;
-  tenantSigned?: boolean;
+  _id: string;
+  listingTitle: string;
+  rent: number;
+  securityDeposit: number;
+  numPeople: number;
+  startDate: string;
+  endDate: string;
+  owner: string;
+  tenant: string;
+  ownerSigned: boolean;
+  tenantSigned: boolean;
 }
 
 interface UserProfile {
-    id: string;
-    name: string;
-    email: string;
-    avatarUrl: string | null;
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
 }
+
 const InProgress = ({
   agreements,
   userProfile,
-  tenant,   // true = viewing tenant tab, false = viewing owner tab
+  tenant,
 }: {
   agreements: Agreement[];
   userProfile: UserProfile;
   tenant: boolean;
 }) => {
+  if (!userProfile) return null;
 
-  if (!userProfile || !userProfile.id) return null;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { leases: ownerLeases } = useLeasePaymentsOwner();
 
-  // 1) Only show fully signed agreements
-  let signedAgreements = agreements.filter(
-    (a) => a.ownerSigned && a.tenantSigned
-  );
+  // Only show agreements fully signed
+  let signed = agreements.filter((a) => a.ownerSigned && a.tenantSigned);
 
-  // 2) Filter by role depending on active tab
   if (tenant) {
-    // Tenant tab → only agreements where user is the tenant
-    signedAgreements = signedAgreements.filter(
-      (a) => a.tenant === userProfile.id
-    );
+    signed = signed.filter((a) => a.tenant === userProfile.id);
   } else {
-    // Owner tab → only agreements where user is the owner
-    signedAgreements = signedAgreements.filter(
-      (a) => a.owner === userProfile.id
-    );
+    signed = signed.filter((a) => a.owner === userProfile.id);
   }
 
   return (
@@ -62,43 +56,65 @@ const InProgress = ({
       </CardHeader>
 
       <CardContent>
-        {signedAgreements.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No active leases found.
-          </p>
+        {signed.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No active leases found.</p>
         ) : (
           <div className="space-y-3">
-            {signedAgreements.map((a) => {
-              const id = a._id!;
+            {signed.map((a) => {
+              if (!a._id || a._id.length < 16) return null;
+
+              const leaseId = BigInt("0x" + a._id.slice(0, 16));
               const youAreOwner = a.owner === userProfile.id;
+
+              const leaseExistsOnChain = ownerLeases.some(
+                (l) => String(l.leaseId) === String(leaseId)
+              );
 
               return (
                 <div
-                key={id}
-                className="p-3 border border-border rounded-lg flex items-center justify-between"
+                  key={a._id}
+                  className="p-3 border border-border rounded-lg flex items-center justify-between"
                 >
-                {/* LEFT SIDE */}
-                <div className="space-y-1">
+                  {/* LEFT */}
+                  <div className="space-y-1">
                     <div className="font-medium text-sm">
-                    {a.listingTitle}{" "}
-                    <span className="text-xs text-muted-foreground">
+                      {a.listingTitle}{" "}
+                      <span className="text-xs text-muted-foreground">
                         ({youAreOwner ? "Owner" : "Tenant"})
-                    </span>
+                      </span>
                     </div>
 
                     <div className="text-xs text-muted-foreground">
-                    {a.startDate} – {a.endDate}
+                      {a.startDate} – {a.endDate}
                     </div>
 
                     <div className="text-xs text-muted-foreground">
-                    Rent ${a.rent} • {a.numPeople || 1} people
+                      Rent ${a.rent} • {a.numPeople} people
                     </div>
-                </div>
+                  </div>
 
-                {/* RIGHT SIDE — ACTIVATE SMART PAYMENTS BUTTON */}
-                {!youAreOwner ? null : (
-                  <ActivateSmartPaymentsButton agreement={a} userProfile={userProfile} />
-                )}
+                  {/* RIGHT */}
+                  <div className="flex flex-col gap-2 items-end">
+                    {youAreOwner && !leaseExistsOnChain && (
+                      <ActivateSmartPaymentsButton
+                        agreement={a}
+                        userProfile={userProfile}
+                      />
+                    )}
+
+                    {leaseExistsOnChain && (
+                      <LeasePaymentControls
+                        lease={{
+                          leaseId,
+                          monthlyRent: BigInt(a.rent),
+                          securityDeposit: BigInt(a.securityDeposit),
+                          rentAvailableToWithdraw: BigInt(0),
+                          depositHeld: BigInt(0),
+                        }}
+                        isOwner={youAreOwner}
+                      />
+                    )}
+                  </div>
                 </div>
               );
             })}
