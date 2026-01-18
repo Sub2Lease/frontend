@@ -1,0 +1,1 @@
+This folder has the declarations and styling of all the small components like input, images, scrollables, etc. 

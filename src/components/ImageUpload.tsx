@@ -1,3 +1,5 @@
+// image upload button for profile on dashboard
+
 import { useState, useRef } from "react";
 import { IMAGE_ENDPOINTS } from "../constants";
 import { useRefreshLocalUser } from "@/hooks/useRefreshLocalUser";

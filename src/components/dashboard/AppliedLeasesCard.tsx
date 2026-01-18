@@ -1,4 +1,5 @@
-// src/components/dashboard/AppliedLeasesCard.tsx
+// display for user to see leases they have applied to on dashboard
+
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText } from "lucide-react";

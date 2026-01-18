@@ -1,3 +1,5 @@
+//display for history of chats between user 
+
 import { cn } from "@/lib/utils";
 import { useUser } from "@/hooks/useUser";
 

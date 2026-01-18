@@ -1,4 +1,5 @@
-// src/components/InteractiveMap.tsx
+// interactive map for background and properties page to call (DO NOT CHANGE) 
+
 import { useEffect, useState, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";

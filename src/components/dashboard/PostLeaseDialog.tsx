@@ -1,4 +1,5 @@
-// src/components/dashboard/PostLeaseDialog.tsx
+// form for posting a new sublease listing on dashboard
+
 import {
   Dialog,
   DialogHeader,

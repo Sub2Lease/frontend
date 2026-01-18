@@ -1,0 +1,1 @@
+Fetches and holds user and api storage and persists it. 

@@ -1,4 +1,5 @@
-// src/components/dashboard/PostedLeasesCard.tsx
+// display for the leases a user has posted (dashboard) 
+
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText } from "lucide-react";

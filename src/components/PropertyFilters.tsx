@@ -1,4 +1,5 @@
-// src/components/PropertyFilters.tsx
+// handler for filtering of properties (changes properties based on whatever changes) 
+
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";

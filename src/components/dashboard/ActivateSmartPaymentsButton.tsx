@@ -1,4 +1,5 @@
-// src/components/ActivateSmartPaymentsButton.tsx
+// Button component to start the activation of Smart Payments for a given agreement. Only calls the activate function from useActivateSmartPayments.  
+
 import { Button } from "@/components/ui/button";
 import { useActivateSmartPayments } from "@/hooks/useActivateSmartPayments";
 

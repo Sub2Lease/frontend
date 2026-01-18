@@ -1,4 +1,5 @@
-// src/contracts/leaseAbi.ts
+// idk crypto shit? looks legit 
+
 export const leaseAbi = [
   {
     anonymous: false,

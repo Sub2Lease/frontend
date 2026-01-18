@@ -1,3 +1,5 @@
+//calls interactive map and makes it move for background
+
 import { useEffect, useState } from "react";
 
 interface Pin {

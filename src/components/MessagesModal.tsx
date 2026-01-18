@@ -1,4 +1,5 @@
-// src/components/MessagesModal.tsx
+//messaging UI on properties 
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,

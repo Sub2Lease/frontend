@@ -1,4 +1,4 @@
-// src/components/dashboard/InProgress.tsx
+// display to see all current in-progress leases (fully signed agreements) on dashboard 
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import ActivateSmartPaymentsButton from "./ActivateSmartPaymentsButton";

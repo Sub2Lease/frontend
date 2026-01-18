@@ -1,7 +1,7 @@
-// src/components/dashboard/ProfileCard.tsx
+// display of profile on navbar 
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"; //ignore
 import { Button } from "@/components/ui/button";
 import ImageUpload from "@/components/ImageUpload";
 import WalletConnectButton from "./WalletConnectButton";
@@ -78,14 +78,6 @@ const ProfileCard = ({ user, loading, onRefresh, onInbox, onLogout }: Props) => 
           <h3 className="font-semibold text-lg">{user.name}</h3>
           <p className="text-sm text-muted-foreground">{user.email}</p>
 
-          {/* <Button
-            variant="outline"
-            size="sm"
-            className="mt-1 w-full"
-            onClick={onInbox}
-          >
-            Open Inbox
-          </Button> */}
         </div>
 
         {/* Wallet Connect */}

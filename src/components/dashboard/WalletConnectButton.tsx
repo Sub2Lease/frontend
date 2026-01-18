@@ -1,3 +1,5 @@
+//option to connect user wallet (again on dashboard holy shit the dashboard lowk buzzing atp)
+
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 const WalletConnectButton = () => {
